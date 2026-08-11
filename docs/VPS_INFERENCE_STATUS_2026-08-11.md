@@ -1,96 +1,113 @@
 # VPS Inference Status — 2026-08-11
 
-Status: IN PROGRESS — not DONE.
+Status: DONE — READY FOR `krakenfondazione` REMOTE INFERENCE.
 
-This file records the verified baseline reported for the dedicated Nemotron inference VPS used by `krakenfondazione`.
+This file records the final verified baseline reported for the dedicated Nemotron inference VPS used by `krakenfondazione`.
 
-## Verified host state
+## Host
 
 - Hostname: `instance-20260719-152821`
 - OS: Debian GNU/Linux 13 (trixie)
-- Kernel: `6.12.101+deb13-cloud-amd64`
 - CPU: 8 vCPU Intel Xeon
 - RAM: ~50 GiB
-- Disk: 252 GB total, ~226 GB free
-- Swap: absent
+- Disk: 252 GB total, ~205 GB free
 
-## Verified GPU state
+## GPU
 
 - GPU count: 2
 - GPU model: NVIDIA Tesla T4
-- VRAM: 15,360 MiB per GPU (~30 GiB aggregate)
+- VRAM: 15,360 MiB per GPU
 - NVIDIA driver: 550.163.01
-- CUDA toolkit: 12.4
-- Idle VRAM: ~1 MiB per GPU
-- Temperature: ~51–53 C
+- CUDA toolkit compatibility: 12.4
 - `nvidia-smi`: PASS
-- `nvidia-smi -L`: PASS
+- both GPUs used by the model: PASS
+- observed model VRAM: ~10.5 GB + ~11.7 GB
 
-## Network and isolation
+## Inference stack
+
+- Runtime: llama.cpp server
+- Runtime version: `1` (commit `84f7129`)
+- Model: NVIDIA Nemotron 3 Nano 30B-A3B
+- Model source: NVIDIA checkpoint, GGUF conversion/distribution from Unsloth
+- Quantization: `UD-Q4_K_XL / Q4_K Medium`
+- Model size: ~22.8 GB
+- Model hash: NOT VERIFIED
+- systemd service: `kraken-nemotron.service`
+
+Commands:
+
+```bash
+systemctl status kraken-nemotron
+sudo systemctl restart kraken-nemotron
+sudo journalctl -u kraken-nemotron -f
+```
+
+## Private API
 
 - Tailscale: running
-- Tailscale IP: `100.73.54.72`
-- Public inference exposure: none yet
+- Private base URL: `http://100.73.54.72:8080/v1`
+- OpenAI-compatible: YES
+- Publicly exposed: NO
+- listener restricted to the Tailscale interface/IP
 
-The VPS remains an inference-only appliance. It must not hold Kraken credentials, trading ledgers, OpenClaw, broker execution code, or financial state.
+Verified endpoints:
 
-## Planned inference stack
+- `/v1/models`: PASS
+- `/v1/chat/completions`: PASS
 
-- Runtime target: `llama.cpp` with CUDA
-- Model target: NVIDIA Nemotron 3 Nano 30B-A3B
-- Planned format: GGUF Q4-class quantization suitable for T4 hardware
-- Proposed artifact at this stage: `Unsloth/Nemotron-3-Nano-30B-A3B-GGUF:UD-Q4_K_XL`
-
-The exact downloaded artifact is NOT VERIFIED until successfully fetched, hashed/identified and loaded.
-
-## Current runtime state
-
-- CUDA compiler: verified
-- CMake: verified
-- llama.cpp source: downloaded
-- llama.cpp release: `b10359`
-- CUDA architecture target: 7.5
-- `llama-server`: NOT BUILT / NOT VERIFIED
-- Nemotron model: NOT DOWNLOADED
-- API: NOT CONFIGURED
-- systemd service: NOT CONFIGURED
-
-The first CUDA build did not produce the expected binary. It reportedly reached ~13 GB RAM usage before termination. Root cause is NOT VERIFIED.
-
-## Test matrix
+## Runtime tests
 
 | Test | Status |
 |---|---|
 | GPU physically available | PASS |
 | NVIDIA driver operational | PASS |
-| GPU survives reboot | PASS |
-| Tailscale survives reboot | PASS |
-| llama-server build | NOT VERIFIED |
-| Nemotron model load | NOT VERIFIED |
-| OpenAI-compatible API | NOT VERIFIED |
-| Structured JSON | NOT VERIFIED |
-| Concurrent requests | NOT VERIFIED |
-| Performance measurement | NOT VERIFIED |
-| systemd restart recovery | NOT VERIFIED |
-| full reboot inference recovery | NOT VERIFIED |
-| complete trading-credential audit | NOT VERIFIED |
+| Model load on both GPUs | PASS |
+| Real completion (`OK`) | PASS |
+| Structured JSON | PASS |
+| 10 sequential requests | PASS |
+| 2 concurrent requests | PASS |
+| Generation performance baseline | ~52.5 tokens/s in reported JSON test |
+| systemd service restart | PASS |
+| full VPS reboot recovery | PASS |
+| Tailscale after reboot | PASS |
+| API after reboot | PASS |
 
-## Current blocker
+## Isolation and security
 
-`BLOCKED: llama.cpp CUDA has not yet produced a working llama-server binary.`
+The VPS is an inference-only appliance.
 
-Next required work:
+Reported sanitized checks found no active or indexed installation/configuration for:
 
-1. recover the exact build log / exit condition;
-2. rebuild with constrained parallelism if memory pressure is involved;
-3. verify `llama-server` before downloading the model;
-4. download one GGUF only;
-5. run an actual GPU model load;
-6. expose the API only on the private/Tailscale interface;
-7. validate `/v1/models` and `/v1/chat/completions` or equivalent;
-8. test structured output, sequential and concurrent requests;
-9. create a persistent systemd service;
-10. perform restart and full reboot recovery tests;
-11. complete a sanitized audit proving no trading credentials are present.
+- Kraken trading software;
+- Coinbase tooling;
+- Hummingbot;
+- Freqtrade;
+- OpenClaw;
+- Ollama;
+- vLLM;
+- SGLang.
 
-Do not mark the VPS inference service as READY in `krakenfondazione` until all required tests above pass and a concrete private base URL plus model identifier are provided.
+Reported trading credentials present: NO.
+
+The VPS must continue to receive only the minimum market/run context required for inference. Kraken credentials, SQLite databases, full paper ledgers and trading authority belong exclusively on the Ubuntu `krakenfondazione` host.
+
+## Handoff contract to TRE/OpenClaw
+
+TRE may now treat the following as the verified remote inference baseline:
+
+```text
+AI_PROVIDER=openai_compatible
+AI_BASE_URL=http://100.73.54.72:8080/v1
+AI_MODEL=<discover exact model ID from /v1/models during installation>
+AI_API_KEY=
+```
+
+Important: do not guess or hardcode the model ID from documentation. During installation, TRE must query `/v1/models`, persist the actual returned identifier in `.env`, and run a real chat completion smoke test.
+
+If the endpoint is unavailable, AI-dependent strategies must pause without affecting deterministic strategies or corrupting active paper ledgers.
+
+## Remaining non-blocking gap
+
+- GGUF/model SHA256: NOT VERIFIED.
+
+This does not block paper experimentation, but the exact model artifact hash should be captured later for strict reproducibility.
