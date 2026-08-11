@@ -1,276 +1,291 @@
-# AGENTS.md — OpenClaw Operating Contract
+# AGENTS.md — TRE / OpenClaw Operating Contract
 
-This file is the mandatory entry point for OpenClaw.
+This is the mandatory entry point for any coding/operating agent working on `glaucogaribaldi/krakenfondazione`.
 
 ## Mission
 
-Turn this repository into a fast-to-install Ubuntu paper-trading laboratory based on Krynos concepts, with Kraken as the real portfolio reference and Qwen/Ollama as the local AI layer.
+Build a fast-to-install Ubuntu PAPER-ONLY trading laboratory centered on the user's real Kraken portfolio at the instant each strategy starts.
 
-The project must optimize for:
+The system must optimize for:
 
-- fast installation on Ubuntu;
+- quick Ubuntu installation;
 - simple strategy authoring;
 - independent strategy runs;
 - faithful START snapshots from the user's real Kraken portfolio;
-- clear paper performance measurement;
-- easy START/STOP from dashboard or CLI;
+- deterministic paper accounting;
+- easy START/STOP/history from dashboard and CLI;
+- replaceable remote AI inference;
 - future live readiness without enabling live now.
 
-## Non-negotiable runtime semantics
+## Product invariant
 
-Each strategy run is independent.
+For every strategy:
 
-When the user presses START for strategy `S`:
+`START -> REAL KRAKEN SNAPSHOT NOW -> NEW INDEPENDENT PAPER RUN -> STOP`
 
-1. Read the current Kraken account using a read-only API key.
-2. Read all supported asset balances.
-3. Read current Kraken market prices needed to value those assets.
-4. Store an immutable `start_snapshot` containing balances, prices, timestamp, quote currency and total equity.
-5. Create a unique `run_id`.
-6. Initialize a paper portfolio from that exact snapshot.
-7. Start the strategy loop.
-8. Never overwrite that run's starting snapshot.
+When START is requested:
 
-While a run is active:
+1. read the current Kraken account using READ-ONLY credentials;
+2. read all supported balances;
+3. obtain fresh market prices needed to value them;
+4. persist an immutable start snapshot with timestamp, balances, prices, quote currency and total equity;
+5. create a unique `run_id` bound to the strategy/config version;
+6. initialize that run's paper ledger from the exact snapshot;
+7. only then mark the run RUNNING.
 
-- use real/current market data;
-- modify only the run's paper ledger;
-- do not continuously resync its balances from Kraken;
-- do not let deposits, withdrawals or manual real trades rewrite the run's paper state;
-- persist decisions, orders, fills, fees, PnL and AI reasoning.
+While RUNNING:
+
+- use current market data;
+- mutate only that run's paper state;
+- never continuously resync its balances from Kraken;
+- deposits, withdrawals or manual real trades must not rewrite the run;
+- persist decisions, paper orders/fills, fees, PnL, equity and AI reasoning.
 
 When STOP is requested:
 
-- stop opening new actions for that run;
-- persist final valuation and metrics;
-- mark the run `STOPPED`;
-- preserve it permanently as history.
+- stop new decisions/actions for that run;
+- finalize/persist valuation and metrics consistently;
+- mark the run STOPPED;
+- preserve it permanently.
 
-If the same strategy is STARTed again later:
+Starting the same strategy later creates a new run from a fresh then-current real Kraken snapshot. Never silently resume an old paper balance.
 
-- create a new `run_id`;
-- take a fresh snapshot of the real Kraken portfolio at that moment;
-- never resume the previous paper balance unless the user explicitly requests a separate resume feature in the future.
+## PAPER ONLY
 
-## Paper-only rule
-
-Current project phase is PAPER ONLY.
+Current phase is PAPER ONLY and must be technically incapable of real execution.
 
 OpenClaw MUST NOT:
 
-- enable Kraken live order permissions;
-- require create/modify/cancel/withdraw permissions;
-- implement an automatic paper-to-live switch;
-- change `PAPER_ONLY` as part of installation;
-- place real orders during development, tests or validation.
+- require Kraken create/modify/cancel/withdraw permissions;
+- place or test real orders;
+- add a one-flag paper-to-live switch;
+- enable live as part of installation;
+- store secrets in Git/logs/dashboard.
 
-The Kraken API key used now should have only read/query permissions required to inspect account state. Secrets must stay outside Git.
+Kraken credentials are used only to query the real account state required for START snapshots.
+
+## Physical architecture
+
+### Ubuntu host — authoritative application
+
+Owns:
+
+- TRE/OpenClaw;
+- repository/source code;
+- Kraken read-only connector;
+- market/snapshot logic;
+- strategy registry;
+- run lifecycle;
+- deterministic portfolio/accounting engine;
+- paper broker;
+- SQLite/WAL ledger;
+- dashboard/CLI;
+- run history;
+- AI client abstraction.
+
+### Remote GPU VPS — inference appliance only
+
+Owns:
+
+- AI model runtime;
+- private OpenAI-compatible inference endpoint;
+- inference runtime logs/health.
+
+The VPS MUST NOT own Kraken credentials, authoritative paper balances, SQLite financial state, strategy lifecycle or real execution authority.
+
+See `docs/VPS_INFERENCE_CONTRACT.md` and `VPS_PREP_PROMPT.md`.
+
+## AI architecture
+
+Default target is a private remote inference endpoint, initially NVIDIA Nemotron 3 Nano.
+
+Configuration must be external/environment-driven. Do not hardcode server IPs, ports or vendor-specific model tags in strategy code.
+
+Logical variables:
+
+```text
+AI_PROVIDER=openai_compatible
+AI_BASE_URL=http://<private-host>:<port>/v1
+AI_MODEL=nemotron-3-nano
+```
+
+Local Ollama/Qwen may remain an optional experimental provider, not a core dependency.
+
+If remote AI fails:
+
+- deterministic strategies continue;
+- AI-dependent runs enter a visible paused/unavailable state;
+- no fake decision is generated;
+- financial state remains consistent.
+
+## Nemotron multi-agent strategy
+
+Implement `nemotron-nano-team` using one remote Nemotron 3 Nano model with role-separated prompts:
+
+1. Momentum Analyst;
+2. Market/Sentiment Analyst;
+3. Portfolio/Risk Analyst;
+4. Judge/Orchestrator.
+
+Do not require four separately loaded copies of the model. Persist role outputs and final judge output.
+
+AI output is a proposal, not accounting truth. Validate structured outputs before paper execution. Invalid output becomes HOLD/NO_ACTION plus an error record.
+
+Financial arithmetic is deterministic code: balances, quantities, available funds, fees, valuation, PnL, equity and drawdown must never be authoritative LLM calculations.
 
 ## Reference implementation
 
-Use https://github.com/falpat/Krynos-AI-Trading-Agent as the upstream reference.
+Inspect the current upstream project before adaptation:
 
-Before modifying architecture, inspect the current upstream repository instead of assuming old file layouts. Preserve MIT attribution if code is copied or adapted.
+`https://github.com/falpat/Krynos-AI-Trading-Agent`
 
-Useful upstream concepts include:
+Reuse/adapt MIT-licensed code where useful and preserve attribution.
 
-- Kraken CLI integration;
-- market data retrieval;
-- quantitative scoring;
-- Bull/Bear/Judge debate;
-- SQLite/WAL persistence;
-- Streamlit dashboard;
-- paper trading semantics.
+Useful concepts include Kraken integration, quantitative signals, Bull/Bear/Judge debate, SQLite/WAL persistence, Streamlit dashboard and paper behavior. Do not preserve upstream structure if it conflicts with independent-run semantics.
 
-Do not preserve upstream structure merely for compatibility if it makes independent runs difficult. Refactor around the run model defined here.
+## Preferred internal structure
 
-## Desired project structure
-
-Prefer a simple monolith, not microservices:
+Keep a simple modular monolith, not a microservice fleet:
 
 ```text
-krakenfondazione/
-  app/
-    core/
-      kraken_reader.py
-      snapshot.py
-      portfolio.py
-      paper_broker.py
-      database.py
-      runner.py
-    ai/
-      provider.py
-      bull.py
-      bear.py
-      judge.py
-    strategies/
-      base.py
-      krynos_original.py
-      qwen_experimental.py
-    dashboard/
-      app.py
-    cli.py
-  data/
-  tests/
-  scripts/
-  .env.example
-  requirements.txt
-  README.md
+app/
+  core/
+    kraken_reader.py
+    snapshot.py
+    portfolio.py
+    paper_broker.py
+    database.py
+    runner.py
+  ai/
+    provider.py
+    roles.py
+    judge.py
+  strategies/
+    base.py
+    krynos_original.py
+    qwen_experimental.py
+    nemotron_nano_team.py
+  dashboard/
+    app.py
+  cli.py
+scripts/
+tests/
+data/
 ```
 
-This is a target, not a reason to rewrite working upstream code unnecessarily.
-
-## AI provider
-
-Default target is local Ollama using an OpenAI-compatible endpoint.
-
-Configuration must be environment-driven, for example:
-
-```text
-AI_PROVIDER=ollama
-OLLAMA_BASE_URL=http://127.0.0.1:11434/v1
-OLLAMA_MODEL=qwen3:8b
-```
-
-Do not hardcode one Qwen model name. Detect/configure the installed model and make changing it a configuration change rather than a code edit.
-
-The Bull/Bear/Judge system should remain available as a reusable service that strategies may invoke. A strategy is also allowed to be purely quantitative and skip AI.
+Adding a normal strategy should primarily mean adding one strategy module, not modifying Kraken/database/broker code.
 
 ## Strategy contract
 
-Strategies are plugins. Adding a new strategy should normally require adding one file under `app/strategies/` and not editing broker/database/Kraken code.
-
 Every strategy receives:
 
-- market state;
-- its own paper portfolio state;
-- its immutable start snapshot;
-- optional AI service;
-- its configuration.
+- current market state;
+- its own paper portfolio;
+- immutable start snapshot;
+- strategy configuration;
+- optional AI provider.
 
-It returns a structured action/proposal such as BUY, SELL or HOLD with symbol, size/target, confidence and reasoning.
+It returns a validated proposal such as BUY/SELL/HOLD with symbol, target/size, confidence and reasoning.
 
 See `docs/STRATEGY_CONTRACT.md`.
 
-## Dashboard MVP
-
-The dashboard must prioritize actions over decoration.
-
-Home view:
-
-- current real Kraken equity and allocation, clearly labelled READ ONLY;
-- last successful real-account refresh;
-- list of available strategies;
-- current run state for each strategy;
-- START button for stopped/not-yet-started strategies;
-- STOP button for running strategies;
-- start timestamp;
-- start equity;
-- current paper equity;
-- PnL %;
-- trade count.
-
-Strategy detail:
-
-- equity curve;
-- drawdown;
-- asset allocation;
-- trade history;
-- fees;
-- decisions;
-- Bull/Bear/Judge logs when used;
-- start snapshot;
-- run history.
-
 ## Persistence
 
-Use SQLite in WAL mode unless a concrete technical reason requires otherwise.
+Use SQLite in WAL mode unless a proven technical reason requires otherwise.
 
-Minimum persistent entities:
+Persist at minimum:
 
-- strategies;
+- strategies and versions;
 - runs;
-- start snapshots;
-- snapshot assets;
+- immutable start snapshots/assets;
 - paper balances/positions;
-- orders;
-- fills;
+- orders/fills/fees;
 - decisions;
-- AI debate records;
+- AI role/debate records;
 - equity observations;
-- run stop/final metrics.
+- stop/final metrics.
 
-Money/quantity arithmetic should use Decimal or equivalent exact decimal handling at financial boundaries.
+Use Decimal/equivalent exact decimal handling at financial boundaries.
+
+## Dashboard MVP
+
+Home:
+
+- current REAL KRAKEN equity/allocation, clearly labelled READ ONLY;
+- refresh timestamp;
+- AI inference health;
+- strategies and RUNNING/STOPPED/NEVER STARTED state;
+- START/STOP controls;
+- current run start time/equity;
+- current paper equity;
+- PnL absolute/%;
+- trade count.
+
+Detail:
+
+- run history;
+- immutable start snapshot;
+- equity curve/drawdown/allocation;
+- orders/fills/fees;
+- decision timeline;
+- AI specialist and judge outputs where applicable.
+
+Never label paper equity as real equity.
 
 ## Installation target
 
-Ubuntu installation should become essentially:
+Desired Ubuntu experience:
 
 ```bash
 git clone https://github.com/glaucogaribaldi/krakenfondazione.git
 cd krakenfondazione
 ./scripts/install.sh
-```
-
-Then:
-
-```bash
 ./scripts/run.sh
 ```
 
-The installer should:
+Installer must be idempotent, create `.venv`, install dependencies, initialize DB, create `.env` without overwriting secrets, verify Kraken read-only connectivity when configured, verify remote inference when configured, run smoke tests and print the dashboard URL.
 
-- verify a compatible Python version;
-- create `.venv`;
-- install Python dependencies;
-- install or verify Kraken CLI;
-- install or verify Ollama;
-- verify configured Qwen model;
-- create `.env` from `.env.example` without overwriting existing secrets;
-- initialize the SQLite database;
-- run a smoke test;
-- print the dashboard URL and the exact next action.
+Do not add Docker unless it materially simplifies this deployment.
 
-Do not add Docker unless it materially simplifies installation on the target Ubuntu machine.
+## Initial implementation order
 
-## First implementation milestone
+1. end-to-end core and independent run lifecycle;
+2. `krynos-original`;
+3. editable experimental strategy/provider path;
+4. `nemotron-nano-team`;
+5. only then additional strategies.
 
-Do not begin by building five elaborate strategies.
+Acceptance scenario:
 
-First make these two work end-to-end:
+- Start A -> snapshot A;
+- later Start B -> current snapshot B;
+- A and B run independently;
+- Stop A without affecting B;
+- Start A again -> A Run 2 from current Kraken state;
+- A Run 1 remains immutable/queryable.
 
-1. `krynos-original` — adapts the upstream Krynos quantitative/debate behavior as faithfully as practical.
-2. `qwen-experimental` — an easily editable AI-oriented strategy used as the design sandbox.
+## Required tests before READY
 
-Acceptance test:
+At minimum prove:
 
-- start strategy A;
-- capture real Kraken snapshot A;
-- later start strategy B and capture a different/current snapshot B;
-- both run simultaneously with independent ledgers;
-- stop A without affecting B;
-- start A again and create A Run 2 from a fresh Kraken snapshot;
-- A Run 1 remains unchanged and queryable.
+- real execution is disabled;
+- START snapshot is immutable;
+- independent runs never share financial state;
+- STOP of one run does not stop others;
+- restart of a strategy creates a new run/current snapshot;
+- process restart recovers paper state consistently;
+- malformed AI output cannot generate malformed trade state;
+- AI outage does not corrupt runs;
+- secrets/runtime DB are excluded from Git.
 
-Only after this passes should additional strategies be added.
+## Do not overbuild
 
-## Development behavior for OpenClaw
+Do not recreate old Fondazione microservices, Hummingbot, Freqtrade, live-lane/risk-kernel machinery or VPS-side trading logic for this MVP.
 
-When operating on this repository:
+## Definition of success
 
-1. Read this file and the docs first.
-2. Inspect actual repository and upstream state before acting.
-3. Prefer small working increments.
-4. Run tests after changes.
-5. Never print secrets.
-6. Never commit `.env`, API secrets, database files or runtime logs containing private account data.
-7. Keep paper-only guarantees covered by tests.
-8. Report what is actually implemented and tested, not what is merely planned.
-
-## Definition of success for the paper phase
-
-The system answers this question for every run:
+For every run the system can answer:
 
 > If this strategy had taken control of the exact portfolio I had on Kraken when I pressed START, and then traded only on paper from that point onward, how would that independent portfolio have evolved?
 
-Everything else is secondary.
+All implementation/reporting must distinguish planned, implemented and actually tested behavior.
