@@ -20,6 +20,33 @@ There is no global reset and no continuous synchronization of paper balances bac
 
 **PAPER ONLY. LIVE TRADING IS OUT OF SCOPE AND MUST NOT BE ENABLED.**
 
+## Physical architecture
+
+The system is intentionally split into two simple roles:
+
+```text
+Ubuntu / TRE OpenClaw
+  - krakenfondazione application
+  - Kraken read-only snapshot reader
+  - strategy manager
+  - paper broker and deterministic accounting
+  - SQLite ledger
+  - Streamlit dashboard
+  - run history
+          |
+          | private/Tailscale OpenAI-compatible API
+          v
+GPU VPS
+  - Nemotron inference only
+  - no Kraken credentials
+  - no trading execution
+  - no authoritative ledger
+```
+
+The GPU VPS is replaceable. Model/runtime changes must not require rewriting portfolio or strategy infrastructure.
+
+Initial remote AI target is **NVIDIA Nemotron 3 Nano**. Nemotron 3 Super is not required for the MVP and may be benchmarked later on suitable hardware.
+
 ## Reference project
 
 The implementation may reuse/adapt the MIT-licensed architecture and code of:
@@ -28,13 +55,29 @@ The implementation may reuse/adapt the MIT-licensed architecture and code of:
 
 Krynos already provides Kraken CLI integration, quantitative signals, Bull/Bear/Judge AI debate, SQLite persistence and Streamlit dashboard concepts. This repository changes the portfolio/run model to be Kraken-balance-centric and multi-strategy.
 
-## Start here for OpenClaw
+## Start here for TRE / OpenClaw
 
-OpenClaw or any coding agent must read, in this order:
+TRE/OpenClaw must read, in this order:
 
 1. `AGENTS.md`
 2. `docs/ARCHITECTURE.md`
 3. `docs/STRATEGY_CONTRACT.md`
 4. `docs/INSTALL_UBUNTU.md`
+5. `docs/VPS_INFERENCE_CONTRACT.md`
+6. `OPENCLAW_INSTALL_PROMPT.md`
 
-The first implementation milestone is deliberately small: install on Ubuntu, connect Kraken read-only, connect local Qwen via Ollama, create two strategies, support independent START/STOP/new-run behavior, persist to SQLite, and expose a Streamlit dashboard.
+For preparing the dedicated GPU VPS, use `VPS_PREP_PROMPT.md` with the separate VPS AI/operator.
+
+## First milestone
+
+Build the smallest complete system first:
+
+- install quickly on Ubuntu;
+- connect Kraken read-only;
+- create immutable START snapshots;
+- support multiple independent runs;
+- persist all paper state in SQLite;
+- expose START/STOP/history in Streamlit;
+- connect to the private remote Nemotron endpoint;
+- implement `krynos-original`, a simple experimental strategy and `nemotron-nano-team`;
+- prove with tests that restarting a stopped strategy creates a new run from the current real Kraken snapshot while preserving all old runs.
