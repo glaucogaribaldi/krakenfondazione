@@ -1,0 +1,26 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data / account-derived state
+data/*.db
+data/*.db-*
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# Secrets / keys
+*.pem
+*.key
+*.secret
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
