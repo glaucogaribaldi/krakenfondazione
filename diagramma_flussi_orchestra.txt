@@ -1,0 +1,87 @@
+================================================================================
+                    DIAGRAMMA DEI FLUSSI - ORCHESTRA VPS (V5.0)
+                     Sintonizzazione & Integrazione Locale
+================================================================================
+
++------------------------------------------------------------------------------+
+|                             VPS DI INFERENZA & TRADING                       |
+|                                                                              |
+|  +------------------------+                                                  |
+|  |   run_24h_loop.py      | <--- [Avvio Ciclo ogni 120s]                     |
+|  |   (Demone Principale)  |                                                  |
+|  +-----------+------------+                                                  |
+|              |                                                               |
+|              | 1. Richiede Snapshot Opportunità                              |
+|              v                                                               |
+|  +------------------------+                                                  |
+|  |   scanner_ledger.py    |                                                  |
+|  |   (Dynamic Scanner)    |                                                  |
+|  +-----------+------------+                                                  |
+|              |                                                               |
+|              | 2. Fetch Tickers (270+ Perpetual)                             |
+|              v                                                               |
+|     ===================                                                      |
+|     KRAKEN FUTURES API  (Real-Time Market Data)                              |
+|     ===================                                                      |
+|              |                                                               |
+|              | 3. Restituisce Tickers & Volumi                               |
+|              v                                                               |
+|  +------------------------+                                                  |
+|  |   scanner_ledger.py    | ---> [Seleziona Top 10 Opp. Volatili]            |
+|  +-----------+------------+                                                  |
+|              |                                                               |
+|              | 4. Genera Snapshot + Discovery Candidates                     |
+|              v                                                               |
+|  +------------------------+                                                  |
+|  |   run_24h_loop.py      |                                                  |
+|  +-----------+------------+                                                  |
+|              |                                                               |
+|              | 5. Invia Snapshot per Valutazione Cautelativa                |
+|              v                                                               |
+|  +------------------------------------------------------------------------+  |
+|  | PORTA 8081: LLAMA 3.1 8B (Llama.cpp)                                   |  |
+|  | AGENTE MENTORE DI RISCHIO                                              |  |
+|  |                                                                        |  |
+|  | Analizza volatilità, size ed evita la leva folle su altcoin.          |  |
+|  | Genera istruzioni vincolanti di sicurezza: "mentor_advice" in italiano.|  |
+|  +-----------------------------------+------------------------------------+  |
+|                                      |                                       |
+|                                      | 6. Restituisce "mentor_advice"        |
+|                                      v                                       |
+|  +------------------------------------------------------------------------+  |
+|  | PORTA 8080: NVIDIA NEMOTRON 3 NANO 30B UD-Q4_K_XL                      |  |
+|  | AGENTE TRADER SOVRANO (Sovereign Broker)                               |  |
+|  |                                                                        |  |
+|  | Riceve: Snapshot di Mercato + "mentor_advice" (Mentore Interno).       |  |
+|  | Decide con sovranità assoluta: Azione (Buy/Sell/Hold), Size e Leva.    |  |
+|  +-----------------------------------+------------------------------------+  |
+|                                      |                                       |
+|                                      | 7. Esegue Decisione JSON              |
+|                                      v                                       |
+|  +------------------------------------------------------------------------+  |
+|  | KRAKEN CLI (Paper Engine)                                              |  |
+|  |                                                                        |  |
+|  | Esegue compravendite reali con prezzi live su Spot o Futures.          |  |
+|  | Simula tariffe, spread, slippage e registra sul database sqlite.        |  |
+|  +------------------------------------------------------------------------+  |
+|                                                                              |
++------------------------------------------------------------------------------+
+
+================================================================================
+                    INTERAZIONI E PROTOCOLLI DI DIALOGO
+================================================================================
+
+1. [Dati Real-Time]: Lo Scanner locale interroga ccxt.krakenfutures() filtrando
+   solo i perpetual lineari USD/EUR ('PF_...'). Nemotron ha così visibilità su
+   tutti i 276 strumenti finanziari del mercato live.
+
+2. [Sinergia Locale VPS]: Prima di piazzare l'ordine, Llama 8B (porta 8081) agisce 
+   come "freno a mano matematico" calcolando le probabilità di liquidazione e 
+   consigliando leve contenute. Nemotron 30B (porta 8080) incorpora questo consiglio
+   nel prompt per effettuare la scelta finale con "coscienza di rischio".
+
+3. [Isolamento Strategico]: L'Architetto (Gemini) non partecipa al trading loop 
+   frazionato a 2 minuti. Rimane offline per l'iniezione asincrona di macro-strategie.
+
+4. [Zero-Loss Baseline]: Portafogli paper azzerati da attività passate e ricaricati 
+   a €149.18 (Spot) e €148.50 (Futures) per rispecchiare fedelmente la cassa reale.
