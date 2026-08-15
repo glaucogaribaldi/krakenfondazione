@@ -5,20 +5,22 @@ import json
 import logging
 import requests
 import subprocess
+import os
+os.environ["KRAKEN_WORKSPACE"] = "fondazione-agentic-next"
 from db_manager import DatabaseManager
 from scanner_ledger import UnifiedLedgerAndScanner
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.FileHandler("/broker/storage/logs/24h_mission.log"), logging.StreamHandler()]
+    handlers=[logging.FileHandler("/broker/storage/storage-next/logs/24h_mission.log"), logging.StreamHandler()]
 )
 
-WORKSPACE = "fondazione-agentic"
+WORKSPACE = "fondazione-agentic-next"
 NEMO_URL = "http://100.73.54.72:8080/v1/chat/completions"
 MENTOR_URL = "http://100.73.54.72:8081/v1/chat/completions"
 KRAKEN_PATH = "/home/tre/.local/bin/kraken"
-POCKETS_PATH = "/broker/storage/db/pockets.json"
+POCKETS_PATH = "/broker/storage/storage-next/db/pockets.json"
 
 sys_prompt = """You are Nemotron Sovereign Broker (V5.0 - DYNAMIC MULTI-ASSET 24H MISSION).
 INTENT: EXTREME_AGGRESSION, MAXIMUM_PROFIT_24H, TOTAL_DIVERSIFICATION, DYNAMIC_LEVERAGE.
@@ -48,7 +50,7 @@ Output strictly JSON:
 }
 Do not use markdown. Only raw JSON."""
 
-db = DatabaseManager("/broker/storage/db/nemotron.sqlite")
+db = DatabaseManager("/broker/storage/storage-next/db/nemotron.sqlite")
 scanner = UnifiedLedgerAndScanner()
 
 def load_pockets():
