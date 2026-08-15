@@ -6,7 +6,8 @@ import logging
 import requests
 import subprocess
 import os
-os.environ["KRAKEN_WORKSPACE"] = "fondazione-agentic-next"
+os.environ["HOME"] = "/broker/storage/storage-next"
+os.environ.pop("KRAKEN_WORKSPACE", None) # Explicitly clear workspace env to prevent Futures validation errors!
 from db_manager import DatabaseManager
 from scanner_ledger import UnifiedLedgerAndScanner
 
@@ -16,7 +17,7 @@ logging.basicConfig(
     handlers=[logging.FileHandler("/broker/storage/storage-next/logs/24h_mission.log"), logging.StreamHandler()]
 )
 
-SHADOW_FUTURES_MODE = True # Set to False when promoted to primary loop!
+SHADOW_FUTURES_MODE = False # Set to False when promoted to primary loop!
 
 WORKSPACE = "fondazione-agentic-next"
 NEMO_URL = "http://100.73.54.72:8080/v1/chat/completions"
