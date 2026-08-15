@@ -16,6 +16,8 @@ logging.basicConfig(
     handlers=[logging.FileHandler("/broker/storage/storage-next/logs/24h_mission.log"), logging.StreamHandler()]
 )
 
+SHADOW_FUTURES_MODE = True # Set to False when promoted to primary loop!
+
 WORKSPACE = "fondazione-agentic-next"
 NEMO_URL = "http://100.73.54.72:8080/v1/chat/completions"
 MENTOR_URL = "http://100.73.54.72:8081/v1/chat/completions"
@@ -363,10 +365,13 @@ async def mission_loop():
                                     "action_taken": {**decision, "calculated_volume": vol, "mapped_symbol": symbol_futures, "leverage": leverage_val}
                                 })
                                 
-                                # Fixed: Added --type market to ensure the orders execute instantly and safely!
-                                cmd = f"{KRAKEN_PATH} futures paper {action} {symbol_futures} {vol} --type market --leverage {leverage_val}"
-                                res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                                logging.info(f"Futures Execution: {res.stdout.strip()} | Error (if any): {res.stderr.strip()}")
+                                if SHADOW_FUTURES_MODE:
+                                    logging.info(f"[SHADOW FUTURES] Simulating execution of {action} {vol} {symbol_futures} with leverage {leverage_val}x to avoid global margin collision.")
+                                else:
+                                    # Fixed: Added --type market to ensure the orders execute instantly and safely!
+                                    cmd = f"{KRAKEN_PATH} futures paper {action} {symbol_futures} {vol} --type market --leverage {leverage_val}"
+                                    res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+                                    logging.info(f"Futures Execution: {res.stdout.strip()} | Error (if any): {res.stderr.strip()}")
                                 
                                 db.update_t1(dec_id, {
                                     "exit_timestamp": int(time.time()),
