@@ -94,10 +94,13 @@ def get_paper_equity_futures():
     try:
         res = run_futures_cmd(f"{KRAKEN_PATH} futures paper status -o json", capture=True)
         data = json.loads(res.stdout)
-        return float(data.get("equity", data.get("collateral", 148.50)))
+        usd_equity = float(data.get("equity", data.get("collateral", 148.50)))
+        rate = get_eur_usd_rate()
+        eur_equity = usd_equity / rate
+        return eur_equity
     except Exception as e:
         logging.error(f"Error fetching paper futures equity: {e}")
-        return 148.50
+        return 148.50 / 1.09
 
 def get_asset_balance_spot(asset):
     try:
@@ -131,6 +134,96 @@ def fetch_price(pair):
     except Exception as e:
         logging.error(f"Error fetching price for {pair}: {e}")
         return None
+
+_last_eur_usd_rate = 1.09
+_last_eur_usd_update = 0
+
+def get_eur_usd_rate():
+    global _last_eur_usd_rate, _last_eur_usd_update
+    current_time = time.time()
+    if current_time - _last_eur_usd_update < 300: # 5 minutes cache
+        return _last_eur_usd_rate
+    try:
+        import ccxt
+        exchange = ccxt.kraken()
+        ticker = exchange.fetch_ticker("EUR/USD")
+        rate = float(ticker['last'])
+        _last_eur_usd_rate = rate
+        _last_eur_usd_update = current_time
+        return rate
+    except Exception as e:
+        logging.error(f"Error fetching live EUR/USD rate: {e}")
+        return _last_eur_usd_rate
+
+def check_liquidity_guard(pair, size_eur, current_price):
+    try:
+        import ccxt
+        exchange = ccxt.kraken()
+        ob = exchange.fetch_order_book(pair)
+        bids_volume = sum(float(bid[1]) for bid in ob['bids'][:5])
+        asks_volume = sum(float(ask[1]) for ask in ob['asks'][:5])
+        
+        vol_needed = size_eur / current_price
+        limit_vol = (bids_volume + asks_volume) / 2 * 0.10 # 10% limit of top 5 levels depth
+        
+        if vol_needed > limit_vol:
+            scaled_vol = limit_vol
+            scaled_size_eur = scaled_vol * current_price
+            logging.warning(f"🛡️ [LIQUIDITY GUARD] Order on {pair} of {vol_needed:.6f} units (€{size_eur:.2f}) exceeds 10% of L2 Book Depth ({limit_vol:.6f} units). Scaling down to €{scaled_size_eur:.2f} ({scaled_vol:.6f} units) to avoid market impact!")
+            return scaled_vol
+        return vol_needed
+    except Exception as e:
+        logging.error(f"Error executing liquidity guard for {pair}: {e}")
+        return size_eur / current_price
+
+def enforce_capital_guard(vol, current_price, leverage_val, initial_equity, max_capital_pct, KRAKEN_PATH):
+    try:
+        if max_capital_pct >= 100.0:
+            return vol
+            
+        # 1. Fetch current active positions
+        res = run_futures_cmd(f"{KRAKEN_PATH} futures paper positions -o json", capture=True)
+        data = json.loads(res.stdout)
+        open_positions = data if isinstance(data, list) else data.get("positions", [])
+        
+        # 2. Sum the cumulative utilized margin in EUR
+        total_margin_used_usd = 0.0
+        for pos in open_positions:
+            size = abs(float(pos.get("size", 0.0)))
+            mark = float(pos.get("mark", 0.0))
+            lev_str = str(pos.get("leverage", "10.0x")).replace("x", "")
+            try:
+                lev = float(lev_str)
+                if lev < 1.0: lev = 10.0
+            except:
+                lev = 10.0
+            total_margin_used_usd += (size * mark) / lev
+            
+        rate = get_eur_usd_rate()
+        total_margin_used_eur = total_margin_used_usd / rate
+        
+        # 3. Calculate margin of the new trade in EUR
+        new_margin_eur = (vol * current_price) / leverage_val
+        
+        # Limit margin in EUR
+        max_allowed_margin_eur = initial_equity * (max_capital_pct / 100.0)
+        
+        if (total_margin_used_eur + new_margin_eur) > max_allowed_margin_eur:
+            max_new_margin_eur = max_allowed_margin_eur - total_margin_used_eur
+            if max_new_margin_eur <= 0.001:
+                logging.warning(f"🛡️ [CAPITAL GUARD] Maximum capital allocation limit of {max_capital_pct}% reached (Used: €{total_margin_used_eur:.2f} / Max: €{max_allowed_margin_eur:.2f}). Skipping trade!")
+                return 0.0
+                
+            # Scale down vol
+            scaled_vol = (max_new_margin_eur * leverage_val) / current_price
+            scaled_vol = round(scaled_vol, 6)
+            logging.warning(f"🛡️ [CAPITAL GUARD] Trade exceeds maximum capital allocation limit. Scaling down size from {vol:.6f} to {scaled_vol:.6f} (New Margin: €{max_new_margin_eur:.2f})!")
+            return scaled_vol
+            
+        return vol
+    except Exception as e:
+        logging.error(f"Error enforcing capital guard: {e}")
+        return vol
 
 def load_supported_futures():
     try:
@@ -236,6 +329,9 @@ def check_and_trigger_tp_sl():
                 continue
                 
             entry_price = float(pos.get("entry", 0.0))
+            if entry_price <= 0.0:
+                # Evita divisione per zero se il broker cartaceo ha posizioni orfane con entry price a zero
+                continue
             mark_price = float(pos.get("mark", 0.0))
             side = pos.get("side", "long").lower()
             
@@ -488,7 +584,7 @@ def get_mentor_reliability(db_path):
     except Exception:
         return 0.8
 
-def query_trader(snapshot, mentor_advice, db_path, allow_spot=True):
+def query_trader(snapshot, mentor_advice, db_path, allow_spot=True, target=500.0, hours_left=24.0, max_capital_pct=100.0, initial_equity=297.68):
     # Pilastro 1: Memoria Episodica SQL
     episodic_context = get_recent_trades_context(db_path, limit=5)
     
@@ -504,9 +600,19 @@ def query_trader(snapshot, mentor_advice, db_path, allow_spot=True):
     if not allow_spot:
         spot_restriction_str = "⚠️ RESTRIZIONE HARDWARE CRITICA: Lo Spot Wallet ha BUDGET ZERO ed è completamente DISABILITATO. Non sei autorizzato a compiere alcuna operazione di tipo 'spot' (buy/sell). Puoi operare ESCLUSIVAMENTE sui Futures perpetui. Imposta sempre 'market_type': 'futures'.\n\n"
         
+    # V7.2: Cognitive Parameter Injection (Giacomo's Mandate)
+    cognitive_guidelines = f"""
+⚠️ DISPOSIZIONI STRATEGICHE V7.2 (MANDATO GIACOMO - RIGID BOUNDARIES):
+1. TARGET DA RAGGIUNGERE: €{target:.2f} (Il tuo obiettivo assoluto e inderogabile è massimizzare l'equity e avvicinarti il più possibile a questo traguardo).
+2. HARD CLOSE AWARENESS (TEMPO RESIDUO): Mancano esattamente {hours_left:.2f} ore alla chiusura forzata di tutte le posizioni. Devi ottimizzare l'equity e convergere al target entro questa scadenza.
+3. CAPITAL ALLOCATION (CAPITAL FREEDOM): Sei autorizzato a impegnare fino al {max_capital_pct}% del tuo capitale di partenza (€{initial_equity:.2f}) come margine collaterale accumulato per finanziare le tue posizioni. Gestisci l'esposizione di conseguenza.
+4. SOVRANITÀ TP/SL INTERNA: Hai la sovranità assoluta nello stabilire e restituire nel JSON i parametri 'take_profit_pct' e 'stop_loss_pct' per ogni operazione in base alla tua analisi quantitativa.
+"""
+        
     prompt = f"""{spot_restriction_str}{episodic_context}
 {dynamic_guardrails}
 {mentor_reliability_str}
+{cognitive_guidelines}
 Market Snapshot (Target-Aware): {json.dumps(snapshot)}
 Risk Mentor Advice (Istruzioni Vincolanti di Rischio): {json.dumps(mentor_advice)}
 
@@ -540,6 +646,20 @@ async def mission_loop():
         
     run_id, initial, target, flat_time = run
     SUPPORTED_FUTURES = load_supported_futures()
+    
+    # NEW V7.2: Load Custom Run Parameters dynamically
+    CONFIG_PATH = "/broker/storage/storage-next/db/run_config.json"
+    max_capital_pct = 100.0
+    duration_hours = 24.0
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH) as f:
+                cfg = json.load(f)
+                max_capital_pct = float(cfg.get("max_capital_allocation_pct", 100.0))
+                duration_hours = float(cfg.get("duration_hours", 24.0))
+            logging.info(f"Loaded Active Run Config: Target={target:.2f} | Duration={duration_hours}h | Max Capital={max_capital_pct}%")
+    except Exception as e:
+        logging.error(f"Error loading run_config.json: {e}")
     
     # V6.2: Leggiamo l'esatto pockets iniziale registrato in pockets.json (cassa reale caricata dal bootstrapper via API)
     initial_pockets = load_pockets()
@@ -644,17 +764,23 @@ async def mission_loop():
                         if market_type == "spot":
                             vol = 0.0
                             if action == "buy":
-                                vol = (spot_equity * size_pct) / current_price
+                                # V7.1: Apply Book Liquidity Guard to check L2 Order Book depth and prevent market impact
+                                vol = check_liquidity_guard(pair, spot_equity * size_pct, current_price)
                             elif action == "sell":
                                 asset = pair.split("/")[0] if "/" in pair else pair.replace("EUR", "")
                                 holding = get_asset_balance_spot(asset)
                                 if holding > 0:
-                                    vol = holding * size_pct
+                                    # Selling is also guarded
+                                    vol = check_liquidity_guard(pair, holding * size_pct * current_price, current_price)
                                 else:
                                     logging.warning(f"No holding of {asset} to sell in Spot Wallet.")
                                     vol = 0.0
                             
                             vol = round(vol, 6)
+                            if vol > 0.0001:
+                                # V7.2: Apply Capital Guard to enforce max cassa usage on Spot
+                                vol = enforce_capital_guard(vol, current_price, 1.0, initial, max_capital_pct, KRAKEN_PATH)
+                                
                             if vol > 0.0001:
                                 db.insert_t0({
                                     "decision_id": dec_id,
@@ -684,10 +810,9 @@ async def mission_loop():
                                 continue
                             
                             vol = 0.0
-                            if action == "buy":
-                                vol = (futures_equity * size_pct) / current_price
-                            elif action == "sell":
-                                vol = (futures_equity * size_pct) / current_price
+                            if action in ["buy", "sell"]:
+                                # V7.1: Apply Book Liquidity Guard to check L2 Order Book depth on Futures as well!
+                                vol = check_liquidity_guard(pair, futures_equity * size_pct, current_price)
                             
                             vol = round(vol, 6)
                             if vol > 0.0001:
@@ -699,6 +824,10 @@ async def mission_loop():
                                 except Exception:
                                     leverage_val = 20
                                     
+                                # V7.2: Apply Capital Guard to enforce max cassa usage on Futures
+                                vol = enforce_capital_guard(vol, current_price, leverage_val, initial, max_capital_pct, KRAKEN_PATH)
+                                
+                            if vol > 0.0001:
                                 db.insert_t0({
                                     "decision_id": dec_id,
                                     "timestamp": int(time.time()),
@@ -726,18 +855,30 @@ async def mission_loop():
                                         tp_val = float(decision.get("take_profit_pct", 5.0))
                                         sl_val = float(decision.get("stop_loss_pct", 2.0))
                                         
+                                        # V7.1: Dynamic Slippage Simulation (0.05% for major pairs, 0.15% for Alts)
+                                        is_major = any(m in symbol_futures for m in ["XBT", "BTC", "ETH"])
+                                        slip_rate = 0.0005 if is_major else 0.0015
+                                        
+                                        # Simulate worse entry price in our local TP/SL trigger to make it conservative
+                                        if action == "buy": # LONG
+                                            effective_entry = current_price * (1 + slip_rate)
+                                        else: # SHORT
+                                            effective_entry = current_price * (1 - slip_rate)
+                                            
                                         active_trades[symbol_futures] = {
-                                            "entry_price": current_price,
+                                            "entry_price": effective_entry,
                                             "side": action,
                                             "size": vol,
                                             "take_profit_pct": tp_val,
                                             "stop_loss_pct": sl_val,
                                             "decision_id": dec_id,
-                                            "timestamp": int(time.time())
+                                            "timestamp": int(time.time()),
+                                            "real_entry_price": current_price,
+                                            "simulated_slippage_pct": slip_rate * 100
                                         }
                                         with open(ACTIVE_TRADES_PATH, "w") as f:
                                             json.dump(active_trades, f, indent=2)
-                                        logging.info(f"📝 [V7.0 REGISTERED TRADE] {symbol_futures} ({action}) @ {current_price} | TP: {tp_val}% | SL: {sl_val}%")
+                                        logging.info(f"📝 [V7.1 REGISTERED TRADE WITH SLIPPAGE] {symbol_futures} ({action}) | Real Entry: {current_price} | Effective Entry: {effective_entry:.2f} (Slip: {slip_rate*100:.2f}%) | TP: {tp_val}% | SL: {sl_val}%")
                                     except Exception as ex:
                                         logging.error(f"Error registering trade to active_trades.json: {ex}")
                                 

@@ -27,24 +27,22 @@ Benvenuto nella memoria a lungo termine di TRE. Qui verranno conservate le decis
 ## 📈 Progetto Trading Evolutivo: `krakenfondazione`
 - **Descrizione:** Sistema di trading evolutivo cartaceo (PAPER-only) accoppiato a modelli AI per decidere l'allocazione su coppie Spot e Futures.
 - **Integrazione Futures (2026-08-14):** L'utente ha fornito le chiavi API dedicate per lo sblocco dei Futures in modalità Paper. Nemotron è autorizzato a simulare il trasferimento di liquidità dal conto Spot Paper al conto Futures Paper per addestrarsi sulle leve finanziarie. Il blocco assoluto di sicurezza contro l'esecuzione sul conto Live rimane inderogabile.
-- **Nuova Architettura Multi-Agente (Revisione 2026-08-15 - Sintonizzazione Finale):**
-  L'ecosistema opera interamente in locale sulla VPS, integrando i modelli installati in una sinergia autosufficiente senza dipendenze esterne:
-  1. **TRE (Main):** Orchestratore dell'infrastruttura, dei sistemi e del codice. Monitora il corretto funzionamento dei demoni e l'allineamento dei database, rimanendo esterno al flusso di trading diretto.
+- **Nuova Architettura Unificata Nemotron-30B (Revisione V7.0 - 2026-08-17):**
+  L'ecosistema opera interamente in locale sulla VPS, unificando l'intera logica cognitiva su un **singolo modello pesante (NVIDIA Nemotron 30B GGUF, porta 8080)**. Llama 3.1 8B (porta 8081) è stato **completamente escluso dal loop di trading** per prevenire timeout, evitare sfasamenti cognitivi e liberare memoria RAM sulla VPS.
+  1. **TRE (Main):** Orchestratore permanente dell'infrastruttura, dei sistemi e del codice. Gestisce il deploy, allinea le casse, monitora i demoni di background e assicura l'integrità del repository su GitHub, rimanendo esterno al flusso di trading diretto.
   2. **architetto-gemini:** Agente offline ed esterno al loop di trading live. Interviene solo asincronamente per analizzare lo storico profondo (es. candele storiche, backtesting offline) e iniettare o rigenerare i macro-prompt e le linee guida strategiche globali.
-  3. **nemotron-trader (Il Sovereign Broker):** L'unico sovrano esecutivo sulla VPS (porta 8080, modello Nemotron 30B GGUF).
-     - **Esecuzione Diretta:** Dialoga con Kraken API (Paper) effettuando compravendite in totale autonomia decisionale.
-     - **Consapevolezza del Rischio (Autogoverno):** Prima di agire, riceve le raccomandazioni di rischio del suo stesso mentore interno (`mentor_advice`), decidendo liberamente size e leva (fino a 50x) bilanciando aggressività e sopravvivenza.
-  4. **L'Agente Mentore di Rischio (Llama 3.1 8B):** Operativo sulla VPS (porta 8081). Riceve lo snapshot di mercato in tempo reale direttamente dallo scanner, analizza la volatilità corrente e la cassa disponibile, e genera in italiano raccomandazioni di rischio rigide (`mentor_advice`) su leve, size e stop-loss, nutrendo la coscienza di Nemotron Trader prima dell'ordine.
-  5. **fondazione-reporter:** Servizio di monitoraggio e generazione bollettini in sola lettura per informare l'utente (Giacomo) tramite canali di notifica (es. Telegram), gestendo le comunicazioni senza sottrarre cicli di calcolo al broker.
+  3. **nemotron-trader (Il Sovereign Broker - Porta 8080):** Esegue la logica di mercato su Nemotron 30B. Dialoga con le API di Kraken (Paper) effettuando transazioni in totale autonomia decisionale, calibrando leverage e size sulla base dei regime strategico corrente (ACCUMULATION, CONSOLIDATION, LOCK-IN) e stabilendo soglie di TP/SL per ogni trade.
+  4. **nemotron-risk-mentor (Il Mentore di Rischio - Porta 8080):** Istruito via prompt separato sullo stesso modello pesante Nemotron 30B. Riceve lo snapshot di mercato in tempo reale direttamente dallo scanner, analizza la volatilità e la cassa, e genera in italiano raccomandazioni di rischio rigide (`mentor_advice`) su leve, size e stop-loss, nutrendo la coscienza di Nemotron Trader prima dell'ordine.
+  5. **fondazione-reporter:** Servizio ausiliario di monitoraggio e generazione bollettini in sola lettura per informare l'utente (Giacomo) tramite Telegram, leggendo passivamente lo stato del database senza interferire con l'infrastruttura esecutiva.
 - **Workspace Ufficiale Paper Trading:**
-  - Si utilizza **esclusivamente `fondazione-agentic`** per centralizzare le performance ed evitare frammentazione. Tutte le operazioni di Nemo e Architetto andranno veicolate qui.
+  - Si utilizza **esclusivamente `fondazione-agentic`** per centralizzare le performance ed evitare frammentazione. Tutte le operazioni di Nemo andranno veicolate qui.
 
 ---
 
 ## ☁️ VPS di Inferenza Nemotron (`instance-20260719-152821`)
 - **Host & Hardware:** Debian 13 (trixie), 8 vCPU, 50 GB RAM, **2 GPU NVIDIA Tesla T4** (15GB VRAM ciascuna) con driver 550.163.01.
 - **Stack:** 
-  - Server `llama.cpp` primario sulla porta `8080` che serve il modello pesante **NVIDIA Nemotron 3 Nano 30B-A3B** (GGUF quantizzato UD-Q4_K_XL) per la logica di mercato.
-  - Server `llama.cpp` secondario sulla porta `8081` che serve il modello **Llama 3.1 8B** per l'agente reporter/facilitatore su Telegram.
+  - Server `llama.cpp` primario sulla porta `8080` che serve il modello pesante **NVIDIA Nemotron 3 Nano 30B-A3B** (GGUF quantizzato UD-Q4_K_XL). È l'**unico** modello attivo interpellato dal loop di produzione V7.0 (sia per il Trader sia per il Mentore).
+  - Server `llama.cpp` secondario sulla porta `8081` che serve il modello **Llama 3.1 8B**. **Totalmente escluso e isolato dal loop di trading attivo.** Rimane a disposizione solo per script ancillari non critici o report storici di sintesi.
 - **Connettività Privata:** Disponibile unicamente su Tailscale agli indirizzi `http://100.73.54.72:8080/v1` e `http://100.73.54.72:8081/v1` (OpenAI-compatible, senza chiavi API).
 - **Isolamento:** La VPS è un'appliance di sola inferenza; non contiene software di trading, databases o credenziali di scambio di Giacomo.
