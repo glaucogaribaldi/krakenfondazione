@@ -56,10 +56,14 @@ class UnifiedLedgerAndScanner:
                     if base in ["USDT", "USDC", "EUR", "USD", "SUSD"]:
                         continue
                     
+                    volume_usd = data.get('quoteVolume', 0)
+                    if volume_usd < 500000:  # Filtro Squeezer: esclude token illiquidi con volume 24h < 500k USD
+                        continue
+                        
                     candidates.append({
                         "symbol": f"{base}/EUR",
                         "price": data.get('last', 0),
-                        "volume_usd": data.get('quoteVolume', 0),
+                        "volume_usd": volume_usd,
                         "change_pct": data.get('percentage', 0)
                     })
             

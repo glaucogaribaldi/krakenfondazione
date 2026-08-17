@@ -58,7 +58,7 @@ def get_live_equity():
             "futures_pocket": fut_total,
             "timestamp": int(time.time())
         }
-        with open("/broker/storage/db/pockets.json", "w") as pf:
+        with open("/broker/storage/storage-next/db/pockets.json", "w") as pf:
             json.dump(pockets, pf, indent=2)
             
         return combined
@@ -70,7 +70,7 @@ def get_live_equity():
             "futures_pocket": 148.50,
             "timestamp": int(time.time())
         }
-        with open("/broker/storage/db/pockets.json", "w") as pf:
+        with open("/broker/storage/storage-next/db/pockets.json", "w") as pf:
             json.dump(pockets, pf, indent=2)
         return 297.68
 
