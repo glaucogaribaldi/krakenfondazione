@@ -36,10 +36,13 @@ Benvenuto nella memoria a lungo termine di TRE. Qui verranno conservate le decis
   5. **fondazione-reporter:** Servizio ausiliario di monitoraggio e generazione bollettini in sola lettura per informare l'utente (Giacomo) tramite Telegram, leggendo passivamente lo stato del database senza interferire con l'infrastruttura esecutiva.
 - **Workspace Ufficiale Paper Trading:**
   - Si utilizza **esclusivamente `fondazione-agentic`** per centralizzare le performance ed evitare frammentazione. Tutte le operazioni di Nemo andranno veicolate qui.
-  - **Standard di Reportistica Dual-Orbit V8.0 (Fissato il 2026-08-18):**
-    - Gli andamenti finanziari e i grafici matplotlib vengono calcolati tramite normalizzazione percentuale rigida a partire dal primo punto effettivo di log per azzerare i bug di conversione valuta EUR/USD ereditati dal database (dove il capitale USD veniva scritto in EUR).
-    - Tutti i dati storici delle run parallele attive (Orbit A/Real-Fee e Orbit B/Zero-Fee) vengono scalati in tempo reale su una base portafoglio reale standardizzata di **€50.000,00** per riflettere fedelmente l'andamento reale dell'equity di Giacomo.
-    - La logica di plotting ed i grafici sono delegati interamente a **Nemotron-30B** sulla VPS, escludendo l'uso di token Gemini API e garantendo la massima sicurezza ed efficienza dei costi.
+  - **Standard di Reportistica Dual-Orbit V8.1 (Fissato il 2026-08-18):**
+    - Gli andamenti finanziari e i grafici matplotlib vengono calcolati esclusivamente a partire dai dati esatti, reali e non scalati delle run attive sulla VPS, eliminando qualsiasi scaling artificiale o fittizio (come i €50.000,00 usati precedentemente).
+    - Il paper trading deve rimanere una simulazione specchio, digit-exact e fedele al 100% del capitale reale snapshottato all'istante di avvio, garantendo che le decisioni, le posizioni e le performance riflettano esattamente la scala reale delle casse di Giacomo.
+    - **Indipendenza Totale della VPS (Migrazione del Plotting - 2026-08-18):**
+      - Il carico computazionale, la logica di calcolo delle performance e il rendering visivo di Matplotlib sono stati interamente spostati e installati direttamente sulla VPS in `/broker/storage/storage-next/nemoforge/generate_charts.py`.
+      - La virtualenv della VPS (`/broker/storage/storage-next/venv/`) è stata equipaggiata con tutte le librerie grafiche e finanziarie (`matplotlib`, `pandas`, `numpy`, `ccxt`).
+      - Zava U50 è stata completamente sganciata da carichi grafici e funge da puro Control Plane e Pass-Through: interroga la VPS tramite SSH per farle generare i grafici e ne esegue semplicemente il download (rsync) passivo delle immagini `.png` già pronte per inoltrarle su Telegram.
 
 ---
 

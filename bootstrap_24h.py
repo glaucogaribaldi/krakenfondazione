@@ -29,6 +29,16 @@ def init_run_db():
     conn.commit()
     conn.close()
 
+def get_eur_usd_rate():
+    try:
+        import ccxt
+        exchange = ccxt.kraken()
+        ticker = exchange.fetch_ticker("EUR/USD")
+        return float(ticker['last'])
+    except Exception as e:
+        print(f"Error fetching EUR/USD rate: {e}")
+        return 1.09
+
 def get_live_equity():
     try:
         with open(VAULT_PATH) as f:
@@ -77,10 +87,12 @@ def get_live_equity():
         else:
             print("Spot total is €0.00, skipping Spot paper workspace reset (disabled).")
             
-        # 2. Reset Futures paper account (V7.1: With 0.05% Futures Fee)
+        # 2. Reset Futures paper account (V7.1: With 0.05% Futures Fee, scaled correctly to USD!)
         try:
-            print(f"Resetting Futures paper account to €{fut_total:.2f} (Fee: 0.05%)...")
-            cmd_fut = f"env -u KRAKEN_WORKSPACE {KRAKEN_PATH} futures paper reset --balance {fut_total:.2f} --fee-rate 0.0005 --yes"
+            rate = get_eur_usd_rate()
+            fut_total_usd = fut_total * rate
+            print(f"Resetting Futures paper account to ${fut_total_usd:.2f} USD (Fee: 0.05%, equivalent to €{fut_total:.2f} EUR at rate {rate:.4f})...")
+            cmd_fut = f"env -u KRAKEN_WORKSPACE {KRAKEN_PATH} futures paper reset --balance {fut_total_usd:.2f} --fee-rate 0.0005 --yes"
             subprocess.run(cmd_fut, shell=True)
         except Exception as e:
             print(f"Error resetting Futures account: {e}")
