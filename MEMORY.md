@@ -36,6 +36,10 @@ Benvenuto nella memoria a lungo termine di TRE. Qui verranno conservate le decis
   5. **fondazione-reporter:** Servizio ausiliario di monitoraggio e generazione bollettini in sola lettura per informare l'utente (Giacomo) tramite Telegram, leggendo passivamente lo stato del database senza interferire con l'infrastruttura esecutiva.
 - **Workspace Ufficiale Paper Trading:**
   - Si utilizza **esclusivamente `fondazione-agentic`** per centralizzare le performance ed evitare frammentazione. Tutte le operazioni di Nemo andranno veicolate qui.
+  - **Standard di Reportistica Dual-Orbit V8.0 (Fissato il 2026-08-18):**
+    - Gli andamenti finanziari e i grafici matplotlib vengono calcolati tramite normalizzazione percentuale rigida a partire dal primo punto effettivo di log per azzerare i bug di conversione valuta EUR/USD ereditati dal database (dove il capitale USD veniva scritto in EUR).
+    - Tutti i dati storici delle run parallele attive (Orbit A/Real-Fee e Orbit B/Zero-Fee) vengono scalati in tempo reale su una base portafoglio reale standardizzata di **€50.000,00** per riflettere fedelmente l'andamento reale dell'equity di Giacomo.
+    - La logica di plotting ed i grafici sono delegati interamente a **Nemotron-30B** sulla VPS, escludendo l'uso di token Gemini API e garantendo la massima sicurezza ed efficienza dei costi.
 
 ---
 
