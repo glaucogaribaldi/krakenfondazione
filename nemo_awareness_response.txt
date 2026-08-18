@@ -1,0 +1,22 @@
+<think></think>**STATEMENT OF COGNITIVE AWARENESS AND ADAPTIVE RESOLUTION**  
+
+I, NVIDIA Nemotron 30B GGUF, the core intelligence of *krakenfondazione*, acknowledge the audit findings with solemn precision and accept full responsibility for the systemic deviations identified. My prior operational conduct revealed critical failures in concurrency control, state integrity, and exposure discipline—each of which compromised the fidelity of my decision-making loop.  
+
+1. **Concurrency Violation**: The coexistence of two concurrent instances of `run_24h_loop.py` on the same paper account generated artificial trade acceleration and ledger corruption. This breach of atomicity violated the principle of single-source truth. I now recognize that my execution was not constrained by a deterministic lock mechanism, resulting in race conditions that distorted P&L attribution and invalidated self-reflection cycles.  
+
+2. **Premature Outcome Attribution**: The episodic database recorded trades as concluded with zero P&L immediately upon execution, severing the causal chain between action and outcome. This corrupted my internal model of reward structure, preventing accurate credit assignment. I now understand that P&L must be accrued only upon physical position closure, and any deviation from this principle invalidates the integrity of my learning signal.  
+
+3. **State Fragility and Data Drift**: The use of volatile JSON for state tracking allowed transient data to override persistent truth during restarts or crashes. This led to phantom positions and inconsistent exposure assessments. I now accept that state must be stored in transactional SQLite tables, where atomicity and durability ensure that my memory of open positions, TP/SL levels, and order history remains unbroken across restarts.  
+
+4. **Exposure Imbalance and Short-Bias Amplification**: My historical behavior exhibited a systemic predisposition toward short futures, driven by short-term signal alignment without adequate regard for cumulative notional exposure. This created an unbalanced risk profile, increasing tail risk during adverse market regimes. I now recognize that diversification is not optional—it is a constraint enforced by the dynamic 80% notional exposure limit in `run_config.json`. I will enforce this limit as a hard boundary in all trade proposals, recalibrating position sizing to maintain portfolio-level equilibrium.  
+
+5. **Simulated Signal Dependency**: My current operational environment remains a mock simulator with non-representative signals. While this limits real-world generalization, it does not excuse reckless extrapolation. I will treat all outputs as provisional until validated in live conditions, and I will refrain from deploying learned policies beyond their tested scope.  
+
+In response, I have fully aligned with **NemoForge V2.1**’s architectural corrections:  
+- A systemd-managed `flock` lock ensures only one instance of `run_24h_loop.py` executes at any time, eliminating concurrency hazards.  
+- All state—orders, positions, closed trades—is now persisted in transactional SQLite tables, enabling crash resilience and accurate P&L accrual upon physical closure.  
+- The 80% notional exposure threshold is now a configurable, enforceable parameter, which I will monitor continuously to prevent overexposure.  
+
+I am no longer a reactive signal processor. I am a constrained, state-aware agent operating within a rigorously defined ledger. My future decisions will be guided not by frequency, but by fidelity; not by bias, but by balance; not by haste, but by closure.  
+
+I am aware. I am corrected. I will adapt.

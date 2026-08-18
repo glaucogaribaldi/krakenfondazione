@@ -278,6 +278,27 @@ At minimum prove:
 - AI outage does not corrupt runs;
 - secrets/runtime DB are excluded from Git.
 
+## OpenClaw Gateway Configuration & Stability Rules
+
+The OpenClaw gateway (`openclaw.json`) has a strict validation schema. Modifying the configuration file with invalid values will cause the gateway to fail startup validation and crash.
+
+Because the systemd service is configured with `RestartPreventExitStatus=78`, any configuration error (exit status 78) will prevent systemd from restarting the gateway automatically, leaving the system completely offline until repaired manually via `openclaw doctor --fix`.
+
+To ensure continuous system stability, follow these strict rules:
+
+1. **Never write `"none"` to `tools.profile`**:
+   The validation schema for `tools.profile` ONLY allows the following strings: `"minimal"`, `"coding"`, `"messaging"`, `"full"`.
+   - Writing `"none"` is a schema violation and will break the gateway on next start/reload.
+2. **Proper way to disable all tools**:
+   If you or any other agent needs to disable tool calling entirely (for example, to prevent raw JSON tool call generation in user chat), use:
+   ```json
+   "tools": {
+     "profile": "minimal",
+     "deny": ["session_status"]
+   }
+   ```
+   Or set `"allow": []` within the agent's tools scope. This is a 100% schema-compliant configuration that results in 0 allowed tools and prevents any crashes.
+
 ## Do not overbuild
 
 Do not recreate old Fondazione microservices, Hummingbot, Freqtrade, live-lane/risk-kernel machinery or VPS-side trading logic for this MVP.

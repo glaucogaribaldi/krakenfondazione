@@ -1,0 +1,57 @@
+Tre, ho fatto eseguire un audit operativo completo del sistema di paper trading con Nemotron sulla VPS. L’infrastruttura è solida: le due Tesla T4, i server di inferenza Nemotron/Reporter, RAM e disco risultano operativi e con risorse adeguate. Il punto da evolvere non è l’aggressività della missione — che è intenzionale — ma l’affidabilità con cui misuriamo, controlliamo e apprendiamo dai trade.
+
+I punti principali emersi sono:
+
+1. Ci sono due istanze contemporanee di `run_24h_loop.py` attive sullo stesso paper account. Questo genera trade più frequenti del previsto e conflitti sullo stato futures (“state is in use by another process”). Serve garantire una sola istanza operativa per run.
+
+2. Il database episodico registra l’ordine come già concluso subito dopo l’esecuzione, con P&L quasi sempre uguale a zero. Di conseguenza, self-reflection, Risk Mentor reliability e eventuale prompt optimization non hanno un outcome reale da cui imparare.
+
+3. Ci sono posizioni futures aperte mentre `active_trades.json` risulta vuoto. Questo implica che il monitor locale TP/SL può perdere il tracciamento di entry, size e parametri della posizione, soprattutto con processi concorrenti o più ingressi sullo stesso simbolo.
+
+4. Nella run osservata il trader ha ripetuto soprattutto decisioni short futures. Non è necessariamente errato in una fase di mercato specifica, ma dobbiamo distinguere una tesi di mercato confermata da una ripetizione del modello priva di un controllo di diversificazione, esposizione cumulata e quality gate.
+
+5. Il repository NemoForge è una buona base per la suite di ricerca, ma Lacus oggi è ancora un simulatore/prototipo: il backtest usa una logica mock e non riproduce la strategia effettiva; non vedo ancora un ciclo completo di replay, fill, posizioni, P&L realizzato e validazione out-of-sample.
+
+Vorrei proporti questo piano evolutivo, mantenendo l’impostazione aggressiva della missione:
+
+Fase 1 — Stabilizzazione dell’esecuzione
+- Introdurre un lock atomico per run, con `run_id`, PID e heartbeat.
+- Rendere il loop un servizio systemd gestito, invece di avviarlo con `nohup`.
+- Aggiungere un controllo di startup: se esiste una run/istanza attiva, non avviare una seconda istanza.
+- Rendere il dashboard idempotente: “nuova run” deve fermare e verificare la precedente, inizializzare la nuova e poi avviare un solo loop.
+
+Fase 2 — Ledger corretto e riconciliazione
+- Separare nel DB gli eventi: decisione, ordine inviato, fill, posizione aperta, posizione chiusa, P&L realizzato.
+- Non assegnare `outcome_pnl_pct = 0` alla creazione dell’ordine: valorizzarlo esclusivamente alla chiusura reale.
+- Registrare per ogni trade: entry/fill, exit/fill, fee, slippage, funding, leva, MAE, MFE, durata e motivo di uscita.
+- Aggiungere una riconciliazione periodica fra stato paper broker, posizioni aperte, `active_trades` e SQLite.
+- Usare un identificatore univoco per trade/ordine, non solo il simbolo, così da supportare scale-in e più ingressi.
+
+Fase 3 — TP/SL ed esposizione
+- Spostare lo stato delle posizioni attive da JSON a SQLite con transazioni atomiche, oppure ricostruirlo sempre dal broker paper.
+- Verificare TP/SL su tutte le posizioni realmente aperte, anche dopo riavvio.
+- Aggiungere limiti tecnici separati per simbolo, direzione, margine totale ed esposizione notional, senza ridurre l’impostazione aggressiva della missione.
+- Loggare esplicitamente ogni mancata esecuzione, guardrail attivato, rifiuto e retry.
+
+Fase 4 — Apprendimento Nemotron affidabile
+- Far partire self-reflection e prompt mutation solo su trade chiusi e riconciliati.
+- Valutare il Risk Mentor sulla base di outcome reali, non su trade ancora aperti o P&L zero.
+- Versionare prompt, guardrail e configurazione per run, per poter attribuire ogni risultato alla versione esatta del sistema.
+- Tenere una baseline immutabile e applicare ogni mutazione come esperimento confrontabile e reversibile.
+
+Fase 5 — NemoForge come ambiente di ricerca
+- Allineare il codice presente sulla VPS a un repository Git versionato.
+- Fare in modo che il backtester riesegua la stessa logica decisionale del live paper loop, senza segnali mock.
+- Inserire fee, slippage, funding, leva, liquidazione, latenza e vincoli di margine coerenti con il paper broker.
+- Creare test automatici per: doppio avvio, riavvio del processo, riconciliazione, TP/SL, calcolo P&L e persistenza DB.
+- Validare le varianti su dati separati: training, validation e out-of-sample.
+
+Puoi preparare una proposta tecnica concreta, con:
+- struttura dei nuovi moduli e file;
+- schema DB proposto;
+- strategia di migrazione senza perdere la run corrente;
+- ordine di implementazione;
+- test di accettazione per ogni fase;
+- rischi e rollback?
+
+Prima di fare modifiche, vorrei una risposta che distingua chiaramente: correzioni urgenti di integrità operativa, miglioramenti del sistema di ricerca e funzionalità opzionali.

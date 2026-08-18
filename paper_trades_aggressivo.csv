@@ -1,0 +1,28 @@
+Timestamp,Action,Pair,Volume,Price,Reason,BalanceEUR
+2026-08-13T17:49:09+02:00,Acquisto,SOLEUR,1.5,65.84,Incrocio e volatilita in trend rialzista di brevissimo termine
+2026-08-13T19:14:00+02:00,Acquisto,SOLEUR,0.3047,65.64,Momentum intraday rialzista su Solana con l'obiettivo di targettare un rendimento rapido del +5% per massimizzare la crescita del wallet cartaceo.
+2026-08-13T20:06:34+02:00,Acquisto,SOLEUR,0.3036,65.75,Movimentazione aggressiva del 5% in un'ora per massimizzare la crescita del wallet cartaceo.,167.01
+2026-08-13T21:07:58+02:00,Acquisto,XRPUSD,0.3,1.0088,Strategia aggressiva Massimo Guadagno (+5%) con acquisto XRP su workspace global per momentum intraday.,167.01
+2026-08-13T21:09:43+02:00,Acquisto,XRPUSD,0.02,1.00848,Strategia aggressiva Massimo Guadagno (+5%) con acquisto XRP su workspace global per momentum intraday.,167.01
+2026-08-13T21:10:20+02:00,Acquisto,XRPUSD,0.3,1.00913,Strategia aggressiva Massimo Guadagno (+5%) con acquisto XRP su workspace global per momentum intraday.,167.01
+2026-08-13T21:10:31+02:00,Acquisto,XRPUSD,0.05,1.00867,Strategia aggressiva Massimo Guadagno (+5%) con acquisto XRP su workspace global per momentum intraday.,167.01
+2026-08-13T21:14:08+02:00,Acquisto,XRPUSD,0.01,1.00911,Strategia aggressiva Massimo Guadagno (+5%) con acquisto XRP su workspace global per momentum intraday.,167.01
+2026-08-13T21:29:00+02:00,Acquisto,ETHUSD,0.00003,1885.16,Strategia Massimo Guadagno (+5%) con acquisto ETH su workspace global per momentum intraday.,198.66
+2026-08-14T00:46:00+02:00,Acquisto,SOLEUR,1.5,66.18,Acquisto speculativo SOL per momentum rialzista notturno,99.14
+2026-08-14T00:52:00+02:00,Monitoraggio,SOLEUR,3.0,66.13,"Prezzo stabile a 66.13 (avg entry 66.01). Nessuna debolezza marcata, continuo a monitorare.",99.14
+2026-08-14T00:58:00+02:00,Monitoraggio,SOLEUR,3.0,66.08,"Prezzo consolidato a 66.08 (avg entry 66.01). Trend orario solido, ritracciamento di breve termine minimo. Continuo a monitorare.",99.14
+2026-08-14T01:06:00+02:00,Monitoraggio,SOLEUR,3.0,66.02,"Prezzo stabile a 66.02 (avg entry 66.01). Lieve consolidamento post-pullback da 66.24. Nessun segnale di inversione pesante. Continuo a monitorare.",99.14
+2026-08-14T01:13:00+02:00,Monitoraggio,SOLEUR,3.0,66.03,"Prezzo stabile a 66.03 (avg entry 66.01). Consolidamento in corso post rally. Trend rialzista di fondo intatto. Continuo a monitorare.",99.14
+2026-08-14T01:21:00+02:00,Monitoraggio,SOLEUR,3.0,66.03,"Prezzo stabile a 66.03. Consolidamento piatto post picco a 66.25. Trend intatto, continuo a monitorare.",99.14
+2026-08-14T01:29:00+02:00,Monitoraggio,SOLEUR,3.0,66.06,"Prezzo stabile a 66.06 (avg entry 66.01). Lieve rimbalzo da 66.02, consolidamento continuo sopra la media. Trend intatto, continuo a monitorare.",99.14
+2026-08-14T01:36:00+02:00,Monitoraggio,SOLEUR,3.0,66.10,"Prezzo stabile a 66.10. Continua il consolidamento laterale sopra 66.00 EUR. Trend di fondo ancora rialzista, continuo a monitorare.",99.14
+2026-08-14T01:43:00+02:00,Monitoraggio,SOLEUR,3.0,66.08,"Prezzo stabile a 66.08 (avg entry 66.01). Consolidamento laterale continuo. Il supporto a 66.00 EUR regge, trend stabile and continuo a monitorare.",99.14
+2026-08-14T01:50:00+02:00,Monitoraggio,SOLEUR,3.0,66.04,"Prezzo stabile a 66.04. Supporto orario a 66.00 EUR continua a reggere. Consolidamento laterale. Trend intatto, continuo a monitorare.",99.14
+2026-08-14T02:00:00+02:00,Monitoraggio,SOLEUR,3.0,66.11,"Prezzo stabile a 66.11. Supporto a 66.00 EUR tiene con lieve recupero da 66.02. Consolidamento laterale. Trend intatto, continuo a monitorare.",99.14
+2026-08-14T02:10:00+02:00,Monitoraggio,SOLEUR,3.0,66.09,"Prezzo a 66.09 (bid 66.08 / ask 66.09). Consolidamento piatto continuo sopra il supporto a 66.00 EUR. Trend stabile, nessuna debolezza marcata né profitto significativo. Continuo a monitorare.",99.14
+2026-08-14T02:20:00+02:00,Monitoraggio,SOLEUR,3.0,66.02,"Prezzo stabile a 66.02 (avg entry 66.01). Consolidamento orario intorno a 66.00 EUR che funge da supporto chiave. Trend stabile, continuo a monitorare.",99.14
+2026-08-14T02:30:50+02:00,Vendita,SOLEUR,3.0,65.90,"Vendita protettiva: rottura del supporto a 66.00 EUR e trend di brevissimo termine debole (ribassista).",296.32
+2026-08-14T02:41:00+02:00,Monitoraggio,SOLEUR,0.0,65.88,"Nessun segno di forte ripresa. Prezzo stabile sotto 66.00 EUR (65.88). Continuo a monitorare in attesa di un segnale di minimo.",296.32
+2026-08-14T02:52:00+02:00,Monitoraggio,SOLEUR,0.0,65.92,"Debole rimbalzo a 65.92 dal minimo di 65.82, ma ancora sotto la resistenza chiave di 66.00 EUR. Nessun segno di inversione rialzista convincente. Continuo a monitorare.",296.32
+2026-08-14T03:00:00+02:00,Monitoraggio,SOLEUR,0.0,65.90,"Consolidamento piatto sotto la resistenza oraria di 66.00 EUR. Nessun segnale di inversione rialzista o forte ripresa, continuo a monitorare.",296.32
+2026-08-14T03:10:00+02:00,Monitoraggio,SOLEUR,0.0,65.85,"Continuazione della discesa a 65.85 EUR (nuovo minimo locale). Nessun segnale di inversione rialzista o forte ripresa, continuo a monitorare in attesa del minimo.",296.32

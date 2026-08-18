@@ -1,0 +1,7 @@
+{
+  "target_equity_eur": 500.0,
+  "duration_hours": 12.0,
+  "max_capital_allocation_pct": 100.0,
+  "slippage_rate": 0.001,
+  "leverage_mode": "dynamic"
+}

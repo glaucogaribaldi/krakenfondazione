@@ -1,0 +1,17 @@
+[Unit]
+Description=NemoForge V2.1 Sovereign Trading Loop Service
+After=network.target
+
+[Service]
+Type=simple
+User=tre
+WorkingDirectory=/broker/storage/storage-next
+Environment=PYTHONPATH=/broker/storage/storage-next
+ExecStart=/broker/storage/storage-next/venv/bin/python3 /broker/storage/storage-next/nemoforge/run_24h_loop_v2.py
+Restart=always
+RestartSec=10
+StandardOutput=file:/broker/storage/storage-next/logs/24h_mission.log
+StandardError=file:/broker/storage/storage-next/logs/nohup_loop.out
+
+[Install]
+WantedBy=multi-user.target

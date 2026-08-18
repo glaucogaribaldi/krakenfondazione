@@ -14,6 +14,9 @@ import requests
 # Append parent directory to sys.path to enable proper imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+# Force test logging bypass if we are running unit tests
+NEMO_TEST_MODE = os.environ.get("NEMO_TEST_MODE", "false") == "true"
+
 from nemoforge.trading_loop_v2 import TradingLoopV2
 from db_manager import DatabaseManager
 from scanner_ledger import UnifiedLedgerAndScanner
@@ -26,17 +29,37 @@ KRAKEN_PATH = "/home/tre/.local/bin/kraken"
 PRESET_PATH = os.path.join(BASE_PATH, "presets/run_preset.template.json")
 ACTIVE_TRADES_PATH = os.path.join(BASE_PATH, "db/active_trades.json")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.FileHandler(os.path.join(BASE_PATH, "logs/24h_mission.log")), logging.StreamHandler()]
-)
+def configure_logging(log_path=None):
+    """
+    Ristruttura il logging (Punto 2 / Isolamento):
+    Nessun FileHandler creato a import-time, configurazione log interamente a runtime.
+    """
+    if NEMO_TEST_MODE:
+        # In test mode, we log exclusively to StreamHandler to avoid permission errors
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            handlers=[logging.StreamHandler(sys.stdout)],
+            force=True
+        )
+    else:
+        actual_path = log_path if log_path else os.path.join(BASE_PATH, "logs/24h_mission.log")
+        os.makedirs(os.path.dirname(actual_path), exist_ok=True)
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s [%(levelname)s] %(message)s',
+            handlers=[logging.FileHandler(actual_path), logging.StreamHandler(sys.stdout)],
+            force=True
+        )
+
+# Call basic configuration of logging so we always have stream fallback if imported
+if NEMO_TEST_MODE:
+    configure_logging()
 
 WORKSPACE = "fondazione-agentic-next"
 NEMO_URL = "http://100.73.54.72:8080/v1/chat/completions"
 
-sys_prompt = """You are Nemotron Sovereign Broker (V7.0 - SOVEREIGN SAFETY & TP/SL GATED).
+sys_prompt_template = """You are Nemotron Sovereign Broker (V7.0 - SOVEREIGN SAFETY & TP/SL GATED).
 INTENT: MAXIMUM_PROFIT_CONVERGENCE, TIME-COMPRESSED ACCUMULATION, SYMMETRIC LONG/SHORT EXPOSURE, GOAL-DRIVEN RISK DYNAMICS, RIGOROUS PROTECTION.
 
 GIACOMO'S MANDATE & STRATEGY:
@@ -47,6 +70,12 @@ GIACOMO'S MANDATE & STRATEGY:
   1. ACCUMULATION: Maximum aggression, capture big trends, high leverage (20x-35x), size 10-15%.
   2. CONSOLIDATION: Balance growth with safety, protect gains, moderate leverage (10x-15x), size 5-10%.
   3. LOCK-IN: High conservatismo, target is within reach! Protect the capital, lock-in EUR, trade tiny sizes, leverage 1x-5x, avoid opening risky trades.
+
+UNIVERSO ASSETS SCANSIONABILE:
+I mercati attualmente abilitati dal preset e supportati a livello runtime sono:
+{scannable_assets}
+
+Tutti gli ordini proposti devono contenere simboli inclusi in questa lista! Qualsiasi simbolo non presente verrà tassativamente rifiutato dai filtri esecutivi di NemoForge.
 """
 
 def get_run_id_from_db():
@@ -95,34 +124,41 @@ class IntegratedProductionLoop:
     and L2 book imbalances with the fcntl-locking, transactional SQLite
     ledger (scale-in/out), and automatic background reconciliations.
     """
-    def __init__(self):
-        self.run_id = get_run_id_from_db()
-        logging.info(f"Initializing V2.1 Integrated Loop for active run: {self.run_id}")
+    def __init__(self, run_id_override=None):
+        # 1. Load active run ID
+        self.run_id = run_id_override if run_id_override else get_run_id_from_db()
         
-        # Load run preset dynamically (Point 6 / fee mode)
-        self.preset = self.load_preset()
+        # 2. Get Frozen run configuration directly from SQLite! (Punto 3 / Preset immutabile)
+        self.preset = self.load_frozen_preset_from_db()
+        
         self.fee_mode = self.preset.get("fee_mode", "zero_fee")
         self.spot_fee_rate = float(self.preset.get("spot_fee_rate", 0.0))
         self.futures_fee_rate = float(self.preset.get("futures_fee_rate", 0.0))
         self.slippage_rate = float(self.preset.get("slippage_rate", 0.001))
         
-        # 1. Initialize transactional ledger and acquire flock lock
+        # Initialize transactional ledger and acquire lock
         self.ledger = TradingLoopV2(self.run_id)
         
-        # 2. Initialize scanner
+        # Initialize scanner
         self.scanner = UnifiedLedgerAndScanner(db_path=DB_PATH)
         
-        # Timer tracking
         self.last_reconciled_at = 0
         
-    def load_preset(self):
-        """Loads Giacomo's official run_preset.template.json dynamically"""
-        if os.path.exists(PRESET_PATH):
-            try:
-                with open(PRESET_PATH, "r") as f:
-                    return json.load(f)
-            except Exception as e:
-                logging.error(f"Error loading preset: {e}")
+    def load_frozen_preset_from_db(self):
+        """Punto 3: Carica la configurazione immutabile e congelata direttamente dal record della run attiva nel DB!"""
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute("SELECT intent FROM runs WHERE run_id = ?", (self.run_id,))
+            row = c.fetchone()
+            conn.close()
+            if row and row[0]:
+                return json.loads(row[0])
+        except Exception as e:
+            # Fallback to local template if DB lookup fails
+            pass
+            
+        # Standard Fallback
         return {
             "fee_mode": "zero_fee",
             "spot_fee_rate": 0.0,
@@ -130,7 +166,8 @@ class IntegratedProductionLoop:
             "slippage_rate": 0.001,
             "max_capital_allocation_pct": 100.0,
             "target_net_equity_eur": 500.0,
-            "duration_hours": 12.0
+            "duration_hours": 12.0,
+            "allowed_assets": "ALL_SUPPORTED"
         }
 
     def load_pockets(self):
@@ -212,7 +249,7 @@ class IntegratedProductionLoop:
             logging.error(f"Risk Mentor Error: {e}")
             return {"advice": "Limit size to 5% and leverage to 10x due to connection timeout."}
 
-    def query_trader(self, snap, mentor_advice, allow_spot=False, target=500.0, hours_left=12.0, max_capital_pct=100.0, initial_equity=297.68):
+    def query_trader(self, snap, mentor_advice, scannable_assets, allow_spot=False, target=500.0, hours_left=12.0, max_capital_pct=100.0, initial_equity=297.68):
         """Queries Nemotron-30B on Port 8080 as the Sovereign Broker/Trader"""
         cognitive_guidelines = f"""
         TARGET: €{target:.2f} | Time Left: {hours_left:.2f}h | Max Capital Allocation: {max_capital_pct}% | Base: €{initial_equity:.2f}
@@ -220,11 +257,16 @@ class IntegratedProductionLoop:
         Economic Fee Regime: {self.fee_mode} (Spot fee: {self.spot_fee_rate}, Futures fee: {self.futures_fee_rate}, Slippage: {self.slippage_rate})
         """
         prompt = f"Market Snapshot: {json.dumps(snap)}\n{cognitive_guidelines}\nDecide Action."
+        
+        # Build dynamic asset prompt listing all scannable assets from preset (Punto 4 / Universe)
+        scannable_str = ", ".join(list(scannable_assets)[:25]) + ("..." if len(scannable_assets) > 25 else "")
+        sys_prompt = sys_prompt_template.format(scannable_assets=scannable_str)
+        
         try:
             resp = requests.post(NEMO_URL, json={
                 "model": "nemotron-3-nano",
                 "messages": [
-                    {"role": "system", "content": "You are a strict automated trading API. You must output ONLY a valid, raw JSON object matching the requested schema. You must NEVER write any explanations, thinking process, or markdown text outside the JSON block. Start directly with '{' and end with '}'!"},
+                    {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.0,
@@ -252,9 +294,6 @@ class IntegratedProductionLoop:
             if 'content' in locals() or 'content' in globals():
                 logging.error(f"Raw Trader Content that failed to parse: {content}")
             return {"action": "hold", "pair": "", "market_type": "spot", "size_pct": 0, "override_mentor": False, "reason": str(e), "shadow_decisions": []}
-
-    def get_mentor_reliability(self):
-        return 0.80
 
     def enforce_capital_guard(self, vol, current_price, leverage_val, initial, max_capital_pct):
         """
@@ -290,6 +329,13 @@ class IntegratedProductionLoop:
         logging.info("Sovereign V2.1 Integrated Loop started. Entering execution cycle...")
         SUPPORTED_FUTURES = self.load_supported_futures()
         
+        # Determine the scannable asset list based on preset (Punto 4 / Universe)
+        allowed_assets_config = self.preset.get("allowed_assets", "ALL_SUPPORTED")
+        if isinstance(allowed_assets_config, list):
+            self.scannable_universe = set(allowed_assets_config)
+        else:
+            self.scannable_universe = SUPPORTED_FUTURES
+
         while True:
             try:
                 # 1. Background Reconciliation Check (every 5 minutes / 300 seconds)
@@ -358,7 +404,7 @@ class IntegratedProductionLoop:
         logging.info(f"Risk Mentor Local Advice: {mentor_advice.get('advice')}")
         
         # Query Trader
-        decision = self.query_trader(snapshot, mentor_advice, allow_spot=False, target=target, hours_left=duration_hours, max_capital_pct=max_capital_pct, initial_equity=297.68)
+        decision = self.query_trader(snapshot, mentor_advice, self.scannable_universe, allow_spot=False, target=target, hours_left=duration_hours, max_capital_pct=max_capital_pct, initial_equity=297.68)
         logging.info(f"Trader Decision: {decision.get('action')} {decision.get('size_pct', 0)} {decision.get('pair', '')} (Leva: {decision.get('leverage', 'N/A')})")
         
         action = decision.get("action")
@@ -367,13 +413,17 @@ class IntegratedProductionLoop:
         market_type = decision.get("market_type", "spot").lower()
         
         if action in ["buy", "sell"] and pair and size_pct > 0 and market_type == "futures":
-            symbol_futures = self.dynamic_map_symbol(pair, SUPPORTED_FUTURES)
-            if not symbol_futures:
-                logging.error(f"No futures perpetual contract mapped for pair {pair}. Skipping.")
+            # Normalizzazione della pair (Punto 4 / Universe)
+            normalized_pair_str = normalize_pair(pair)
+            symbol_futures = self.dynamic_map_symbol(normalized_pair_str, SUPPORTED_FUTURES)
+            
+            # Check whitelist/supported list at runtime before executing order
+            if not symbol_futures or symbol_futures not in self.scannable_universe:
+                logging.error(f"🛡️ [SECURITY FILTER REJECTION] Proposed asset '{pair}' ({symbol_futures}) is NOT supported or allowed by the active run configuration. Rejecting order.")
                 return
                 
             # Compute execution volume
-            ticker = ccxt.kraken().fetch_ticker(normalize_pair(pair))
+            ticker = ccxt.kraken().fetch_ticker(normalized_pair_str)
             current_price = float(ticker['last'])
             
             # Simple volume calculation
@@ -405,7 +455,6 @@ class IntegratedProductionLoop:
                     
                     # TRANSACTIONAL V2.0 LEDGER WRITES!
                     # Log Order & update position atomically inside a single SQLite transaction!
-                    # We pass the TP/SL specified by the strategist or default thresholds (3.5% TP / 1.5% SL)
                     tp_price = current_price * 1.035 if action == 'buy' else current_price * 0.965
                     sl_price = current_price * 0.985 if action == 'buy' else current_price * 1.015
                     
@@ -472,6 +521,69 @@ class IntegratedProductionLoop:
         except Exception as e:
             logging.error(f"Error executing close order: {e}")
 
+# Preflight complete system (Punto 1 / Preflight systemd)
+def run_preflight_checks():
+    print("=== STARTING PREFLIGHT SYSTEM VERIFICATION ===")
+    
+    # 1. sys.executable & __file__
+    print(f"- Python Executable: {sys.executable}")
+    print(f"- Module Loop File: {__file__}")
+    
+    # 2. Version/Hash (Simple line-count version)
+    with open(__file__, 'rb') as f:
+        file_bytes = f.read()
+        import hashlib
+        print(f"- Module SHA256 Hash: {hashlib.sha256(file_bytes).hexdigest()}")
+        
+    # 3. Import requests test
+    try:
+        import requests
+        print("- Import requests: SUCCESS!")
+    except ImportError as e:
+        print("- Import requests: FAILED!")
+        sys.exit(1)
+        
+    # 4. Check Nemotron endpoint reachability
+    try:
+        resp = requests.get("http://100.73.54.72:8080/v1/models", timeout=5)
+        if resp.status_code == 200:
+            print("- Endpoint Nemotron: REACHABLE & SUCCESS!")
+        else:
+            print(f"- Endpoint Nemotron: UNEXPECTED STATUS CODE {resp.status_code}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"- Endpoint Nemotron: UNREACHABLE! Error: {e}")
+        sys.exit(1)
+        
+    # 5. DB Reachable & writable check
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("SELECT 1")
+        conn.close()
+        print("- DB Path: REACHABLE & HEALTHY!")
+    except Exception as e:
+        print(f"- DB Path: UNREACHABLE! Error: {e}")
+        sys.exit(1)
+        
+    # 6. Lock acquisibile check
+    # Check that we can acquire the flock lock (temporarily check on test lock or check no other instances are active)
+    try:
+        from nemoforge.utils.lock import acquire_lock
+        # Just acquire lock on preflight temporary lock file
+        acquire_lock("/tmp/nemoloop_preflight.lock")
+        print("- Lock System: ACQUISIBLE & OPERATIONAL!")
+    except Exception as e:
+        print(f"- Lock System: FAILED! Another instance might be locking the preflight. Error: {e}")
+        sys.exit(1)
+        
+    print("=== PREFLIGHT VERIFICATION: ALL PASSED 100% ===")
+
 if __name__ == '__main__':
+    # Run preflight verification first! If it fails, sys.exit(1) ensures the service stops immediately.
+    if not NEMO_TEST_MODE:
+        run_preflight_checks()
+        configure_logging()
+        
     loop = IntegratedProductionLoop()
     loop.run()

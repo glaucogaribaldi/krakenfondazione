@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEMOTRON SOVEREIGN TERMINAL V6.3</title>
+    <!-- Tailwind CSS per la griglia e la flessibilità -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* CSS RETRÒ ANNI 2000 (Windows 2000 / Winamp / Terminal style) */
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=VT323&display=swap');
+        
+        body {
+            background-color: #0c0d12;
+            color: #00ff66;
+            font-family: 'Courier New', Lucida Console, monospace;
+            margin: 0;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+
+        /* Effetto rilievo 3D Windows 2000 (Skeuomorphic window) */
+        .win2000-panel {
+            background-color: #1e222b;
+            border: 3px solid;
+            border-color: #3e4451 #11141a #11141a #3e4451;
+            padding: 10px;
+            box-shadow: inset 1px 1px 0px #4c5264, 4px 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .win2000-header {
+            background: linear-gradient(90deg, #0055d4, #00aaff);
+            color: white;
+            padding: 4px 8px;
+            font-weight: bold;
+            font-size: 13px;
+            text-shadow: 1px 1px 2px black;
+            border-bottom: 2px solid #11141a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Pulsanti sporgenti con rilievo 3D */
+        .win2000-btn {
+            background-color: #2b303c;
+            color: #00ff66;
+            border: 2px solid;
+            border-color: #4c5264 #11141a #11141a #4c5264;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            text-shadow: 1px 1px 0px black;
+        }
+
+        .win2000-btn:active {
+            border-color: #11141a #4c5264 #4c5264 #11141a;
+            box-shadow: inset 1px 1px 2px rgba(0,0,0,0.8);
+            padding: 7px 11px 5px 13px;
+        }
+
+        /* Input incassati 3D */
+        .win2000-input {
+            background-color: #0c0d12;
+            color: #00ff66;
+            border: 2px solid;
+            border-color: #11141a #4c5264 #4c5264 #11141a;
+            padding: 4px 8px;
+            font-family: inherit;
+            font-size: 13px;
+        }
+
+        /* Display LED pixelato stile segmenti Winamp */
+        .led-display {
+            font-family: 'VT323', monospace;
+            background-color: #050608;
+            color: #ff9900;
+            padding: 6px 12px;
+            border: 2px solid #11141a;
+            font-size: 32px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 8px rgba(255,153,0,0.6);
+            display: inline-block;
+        }
+
+        .led-display.green {
+            color: #00ff66;
+            text-shadow: 0 0 8px rgba(0,255,102,0.6);
+        }
+
+        /* Matrix Log Waterfall */
+        .log-container {
+            background-color: #050608;
+            border: 2px solid #11141a;
+            font-size: 11px;
+            height: 250px;
+            overflow-y: scroll;
+            padding: 8px;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        /* Ticker a scorrimento orizzontale */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            background-color: #050608;
+            border: 2px solid #11141a;
+            padding: 4px 0;
+            margin-bottom: 10px;
+        }
+
+        .ticker {
+            display: inline-block;
+            white-space: nowrap;
+            padding-left: 100%;
+            animation: ticker 25s linear infinite;
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff66;
+            text-shadow: 0 0 4px rgba(0,255,102,0.5);
+        }
+
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-100%, 0, 0); }
+        }
+
+        /* Custom Scrollbar stile Windows 2000 */
+        ::-webkit-scrollbar {
+            width: 12px;
+            background-color: #2b303c;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #3e4451;
+            border: 2px solid #2b303c;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. WALL STREET TICKER (Sentiment RSS in tempo reale) -->
+    <div class="ticker-wrap">
+        <div class="ticker" id="rss-ticker">
+            CARICAMENTO NOTIZIE RSS E ANALISI DEL SENTIMENT IN CORSO...
+        </div>
+    </div>
+
+    <!-- MAIN TERMINAL GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <!-- 2. THE MARKET BOOK (Saldi, Posizioni ed Equity Curve) -->
+        <div class="win2000-panel lg:col-span-2">
+            <div class="win2000-header">
+                <span>NEMOTRON MARKET TERMINAL</span>
+                <span class="text-xs">SYS_8080: ACTIVE</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+                <div>
+                    <div class="text-xs uppercase mb-1">Cassa Spot</div>
+                    <div class="led-display text-center w-full" id="spot-display">€0.00</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase mb-1">Cassa Futures</div>
+                    <div class="led-display text-center w-full" id="futures-display">€297.68</div>
+                </div>
+                <div>
+                    <div class="text-xs uppercase mb-1">Equity Unificata</div>
+                    <div class="led-display green text-center w-full" id="equity-display">€297.68</div>
+                </div>
+            </div>
+
+            <!-- Posizioni Attive -->
+            <div class="mt-4">
+                <div class="text-xs uppercase font-bold mb-2">Posizioni Futures Attive (Symmetric Book)</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse border border-zinc-700">
+                        <thead>
+                            <tr class="bg-zinc-800 text-zinc-400">
+                                <th class="p-2 border border-zinc-700">Asset</th>
+                                <th class="p-2 border border-zinc-700">Direzione</th>
+                                <th class="p-2 border border-zinc-700">Size</th>
+                                <th class="p-2 border border-zinc-700">Prezzo Carico</th>
+                                <th class="p-2 border border-zinc-700">Prezzo Corrente</th>
+                                <th class="p-2 border border-zinc-700">Leva</th>
+                                <th class="p-2 border border-zinc-700">PnL non Realizzato</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table">
+                            <tr>
+                                <td colspan="7" class="p-4 text-center text-zinc-500">Nessuna posizione aperta. Scanner in ascolto.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Parametri di Run -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-xs">
+                <div>
+                    <span class="text-zinc-400 uppercase">ID Run:</span>
+                    <div class="font-bold text-white mt-1" id="run-id">-</div>
+                </div>
+                <div>
+                    <span class="text-zinc-400 uppercase">Target X:</span>
+                    <div class="font-bold text-orange-400 mt-1" id="target-id">-</div>
+                </div>
+                <div>
+                    <span class="text-zinc-400 uppercase">Uptime:</span>
+                    <div class="font-bold text-white mt-1" id="uptime-id">00:00:00</div>
+                </div>
+                <div>
+                    <span class="text-zinc-400 uppercase">P&L Complessivo:</span>
+                    <div class="font-bold text-white mt-1" id="pnl-id">0.00%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. THE BRAIN LOGS (Riflessione, Memoria ed Affidabilità) -->
+        <div class="win2000-panel">
+            <div class="win2000-header">
+                <span>NEMOTRON AUTO-LEARNING BRAIN</span>
+                <span class="text-xs">P.1-2-3</span>
+            </div>
+
+            <!-- Guardrails Dinamici (Pilastro 2) -->
+            <div class="my-4">
+                <div class="text-xs uppercase font-bold mb-2">Guardrails Dinamici (Auto-Riflessione)</div>
+                <div class="p-3 bg-zinc-950 border border-zinc-800 rounded text-xs text-orange-400 font-mono h-24 overflow-y-auto" id="guardrails-display">
+                    Generazione dei primi guardrails in corso...
+                </div>
+            </div>
+
+            <!-- Memoria Episodica Recente (Pilastro 1) -->
+            <div class="my-4">
+                <div class="text-xs uppercase font-bold mb-2">Memoria Episodica Recente</div>
+                <div class="p-2 bg-zinc-950 border border-zinc-800 rounded text-2xs text-emerald-400 font-mono h-28 overflow-y-auto" id="memory-display">
+                    Nessun trade precedente registrato a database.
+                </div>
+            </div>
+
+            <!-- Affidabilità Mentore (Pilastro 3) -->
+            <div>
+                <div class="text-xs uppercase font-bold mb-2">Affidabilità Risk Mentor</div>
+                <div class="flex items-center gap-3">
+                    <div class="led-display green text-sm py-1" id="mentor-display">80.0%</div>
+                    <span class="text-2xs text-zinc-400">Punteggio di accuratezza storica delle indicazioni sul rischio. Se >75%, si attiva il blocco di sicurezza d'autorità.</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SECOND TERMINAL ROW -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
+
+        <!-- 4. CONTROLLI DI STATO ED INTERAZIONE -->
+        <div class="win2000-panel">
+            <div class="win2000-header">
+                <span>TERMINAL CONTROL PANEL</span>
+                <span class="text-xs">V6.3</span>
+            </div>
+
+            <div class="flex flex-wrap gap-3 my-4">
+                <button class="win2000-btn text-emerald-400 border-emerald-500">PLAY</button>
+                <button class="win2000-btn text-amber-500 border-amber-600">PAUSE</button>
+                <button class="win2000-btn text-red-500 border-red-700" onclick="triggerFlat()">EMERGENCY FLAT</button>
+            </div>
+
+            <!-- Nuovo Test -->
+            <div class="mt-4 pt-4 border-t border-zinc-800 text-xs">
+                <div class="font-bold uppercase mb-2">Inizializza Nuovo Test (V6.3)</div>
+                <div class="flex items-center gap-3">
+                    <label class="text-zinc-400">Target X (EUR):</label>
+                    <input type="number" id="target-input" class="win2000-input w-24" value="500">
+                    <button class="win2000-btn text-cyan-400 border-cyan-500" onclick="triggerNewRun()">NEW RUN</button>
+                </div>
+                <span class="text-2xs text-zinc-500 block mt-2">Lanciando un nuovo test, la run corrente verrà arrestata ed archiviata, ed il sistema scarterà lo Spot a zero ripartendo unicamente dai Futures.</span>
+            </div>
+        </div>
+
+        <!-- 5. MATRIX CASCADE LOG LIVE -->
+        <div class="win2000-panel lg:col-span-2">
+            <div class="win2000-header">
+                <span>NOHUP LOG CASCADE (TIME-COMPRESSED)</span>
+                <span class="text-xs">LIVE_STREAM</span>
+            </div>
+            
+            <div class="log-container font-mono mt-3" id="log-waterfall">
+                Caricamento dello streaming live dei log in corso...
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Funzione per formattare l'uptime
+        function formatUptime(seconds) {
+            const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+            const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+            const s = (seconds % 60).toString().padStart(2, '0');
+            return `${h}:${m}:${s}`;
+        }
+
+        // Funzione per caricare lo stato delle API
+        async function fetchStatus() {
+            try {
+                const resp = await fetch("/api/status");
+                const data = await resp.json();
+                
+                if (data.error) {
+                    console.error("API Status Error:", data.error);
+                    return;
+                }
+
+                // Aggiornamento Saldi
+                document.getElementById("spot-display").innerText = `€${data.equity.spot_pocket.toFixed(2)}`;
+                document.getElementById("futures-display").innerText = `€${data.equity.futures_pocket.toFixed(2)}`;
+                document.getElementById("equity-display").innerText = `€${data.equity.unified_equity.toFixed(2)}`;
+                
+                // Aggiornamento Run e Parametri
+                if (data.run) {
+                    document.getElementById("run-id").innerText = data.run.run_id;
+                    document.getElementById("target-id").innerText = `€${data.run.target_equity_eur.toFixed(2)}`;
+                    document.getElementById("uptime-id").innerText = formatUptime(data.uptime_seconds);
+                    document.getElementById("pnl-id").innerText = `${data.equity.pnl_pct.toFixed(2)}%`;
+                }
+
+                // Aggiornamento Guardrails Dinamici
+                if (data.guardrails) {
+                    document.getElementById("guardrails-display").innerText = data.guardrails;
+                }
+
+                // Aggiornamento Affidabilità Mentore
+                document.getElementById("mentor-display").innerText = `${(data.mentor_reliability * 100).toFixed(1)}%`;
+
+                // Aggiornamento Memoria Episodica
+                if (data.recent_trades && data.recent_trades.length > 0) {
+                    let memHTML = "";
+                    data.recent_trades.forEach(t => {
+                        memHTML += `<div>• Trade su ${t.pair}: ${t.action.toUpperCase()} (${t.pnl >= 0 ? '+' : ''}${t.pnl}% - ${t.reason})</div>`;
+                    });
+                    document.getElementById("memory-display").innerHTML = memHTML;
+                }
+
+                // Aggiornamento Posizioni Attive
+                const posTable = document.getElementById("positions-table");
+                if (data.positions && data.positions.length > 0) {
+                    let posHTML = "";
+                    data.positions.forEach(p => {
+                        const pnl = p.unrealized_pnl || 0.0;
+                        posHTML += `
+                            <tr class="border-t border-zinc-800">
+                                <td class="p-2 border border-zinc-700">${p.symbol}</td>
+                                <td class="p-2 border border-zinc-700 text-${p.side === 'long' ? 'emerald' : 'rose'}-400 font-bold">${p.side.toUpperCase()}</td>
+                                <td class="p-2 border border-zinc-700">${p.size}</td>
+                                <td class="p-2 border border-zinc-700">$${p.entry_price.toFixed(4)}</td>
+                                <td class="p-2 border border-zinc-700">$${p.mark_price.toFixed(4)}</td>
+                                <td class="p-2 border border-zinc-700">${p.leverage}x</td>
+                                <td class="p-2 border border-zinc-700 text-${pnl >= 0 ? 'emerald' : 'rose'}-400 font-bold">$${pnl.toFixed(4)}</td>
+                            </tr>
+                        `;
+                    });
+                    posTable.innerHTML = posHTML;
+                } else {
+                    posTable.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-zinc-500">Nessuna posizione aperta. Scanner in ascolto.</td></tr>`;
+                }
+
+            } catch (e) {
+                console.error("Failed to fetch status:", e);
+            }
+        }
+
+        // Funzione per caricare i log in tempo reale
+        async function fetchLogs() {
+            try {
+                const resp = await fetch("/api/logs?lines=40");
+                const data = await resp.json();
+                
+                const logBox = document.getElementById("log-waterfall");
+                logBox.innerText = data.logs || "Nessun log registrato.";
+                
+                // Auto-scroll in fondo per simulare il waterfall
+                logBox.scrollTop = logBox.scrollHeight;
+            } catch (e) {
+                console.error("Failed to fetch logs:", e);
+            }
+        }
+
+        // Trigger del Flatten d'Emergenza
+        async function triggerFlat() {
+            if (confirm("Sei sicuro di voler attivare il FLATTEN d'emergenza? Tutte le posizioni verranno liquidate istantaneamente.")) {
+                try {
+                    const resp = await fetch("/api/control/flat", { method: "POST" });
+                    const res = await resp.json();
+                    alert(res.message);
+                } catch (e) {
+                    alert("Errore nell'invio del comando d'emergenza.");
+                }
+            }
+        }
+
+        // Inizializza Nuovo Test
+        async function triggerNewRun() {
+            const targetVal = document.getElementById("target-input").value;
+            if (confirm(`Sei sicuro di voler avviare un NUOVO ROUND con Target X pari a €${targetVal}?`)) {
+                try {
+                    const resp = await fetch("/api/control/new_run", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ target_eur: targetVal })
+                    });
+                    const res = await resp.json();
+                    alert(res.message);
+                    window.location.reload();
+                } catch (e) {
+                    alert("Errore nell'inizializzazione del nuovo round.");
+                }
+            }
+        }
+
+        // Loop di polling
+        setInterval(fetchStatus, 3000);  // Ogni 3 secondi per i dati del portafoglio
+        setInterval(fetchLogs, 5000);    // Ogni 5 secondi per il waterfall dei log
+        
+        // Primo caricamento
+        fetchStatus();
+        fetchLogs();
+    </script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+Tre, voglio chiudere lo sviluppo di NemoForge/Fondazione per arrivare a una run paper trading realmente pronta all’uso.
+
+Vincolo assoluto: PAPER ONLY. Kraken reale deve essere usato esclusivamente per leggere lo snapshot iniziale del mio portafoglio; nessun ordine, trasferimento o modifica può essere inviato al conto reale.
+
+Prima di iniziare:
+
+1. Metti il sistema in manutenzione.
+2. Ferma solo i processi di trading e controllo trading correlati:
+   - `nemoloop.service`;
+   - eventuali `run_24h_loop.py`;
+   - eventuali `run_24h_loop_v2.py`;
+   - eventuali processi dashboard che possano avviare nuove run.
+3. Non fermare i server di inferenza Nemotron/Reporter salvo strettamente necessario.
+4. Verifica che non resti nessun processo di esecuzione paper attivo.
+5. Esegui snapshot verificabile del database SQLite e dello stato paper broker prima di ogni migrazione.
+6. Mantieni il broker paper flat prima della messa in produzione della nuova versione.
+
+Obiettivo funzionale finale:
+
+Io devo poter avviare una run compilando un preset. La run deve:
+
+1. Leggere lo stato reale Kraken in sola lettura al momento dello START.
+2. Creare uno snapshot immutabile di portafoglio, valore, asset, prezzi di riferimento e tasso EUR/USD.
+3. Creare un paper account indipendente, senza sincronizzazioni successive verso il conto reale.
+4. Accettare un obiettivo netto in EUR e una durata della simulazione.
+5. Consentire una modalità commissionale scelta all’avvio:
+   - `zero_fee`: fee spot e futures a zero, perché in quel periodo Kraken può offrire promozioni;
+   - `kraken_standard`: commissioni standard configurate;
+   - `custom`: fee spot, fee futures, slippage e funding definiti nel preset.
+6. Passare il regime economico reale della run a Nemotron e applicarlo in tutti i calcoli: paper broker, sizing, ledger, P&L, backtest, analytics e prompt.
+7. Lasciare a Nemotron autonomia completa nella strategia: scelta asset fra tutti quelli supportati/scambiabili, long/short, ingresso, uscita, dimensione, leva disponibile sul broker paper, gestione profitti e perdite.
+8. Mantenere guardrail deterministici di integrità: nessun doppio processo, limiti configurati di esposizione/margine, stop tecnico di run, TP/SL persistenti, flattening a scadenza e riconciliazione broker/DB.
+9. Calcolare sempre rendimento e obiettivo in termini netti rispetto al fee regime congelato nella run. Anche una run zero-fee deve mantenere slippage e funding, salvo configurazione esplicita contraria.
+10. A fine durata, flattening completo, riconciliazione finale, ledger chiuso e report della run.
+
+Correzioni tecniche obbligatorie:
+
+- Implementare e usare `normalize_pair()` ovunque:
+  - `BTC/EUR` → `BTC/EUR`
+  - `BTCEUR` → `BTC/EUR`
+  - `BTCUSD` → `BTC/USD`
+  - `BTC/USD` → `BTC/USD`
+  - rifiutare input non validi.
+- Applicare veramente `enforce_capital_guard()` usando margine già occupato, margine richiesto, leva, tasso EUR/USD e limite della run.
+- Rendere la risposta Trader JSON rigorosa e validata con schema. Normalizzare `action` e accettare solo `buy`, `sell`, `hold`.
+- Rendere atomica la registrazione `fill → order → position` con una singola transazione SQLite.
+- Usare un `position_id` non nullo, generato all’apertura e mantenuto in scale-in/scale-out/chiusura.
+- Isolare sempre le posizioni per `run_id`.
+- Calcolare e salvare:
+  - gross P&L;
+  - fee ingresso allocate pro-quota;
+  - fee uscita;
+  - funding;
+  - slippage;
+  - net P&L;
+  - net P&L %;
+  - MAE/MFE;
+  - durata;
+  - exit reason.
+- Nelle chiusure parziali, allocare fee e funding pro-quota e aggiornare il residuo senza doppio conteggio.
+- Fare riconciliazione periodica con il broker paper, che è fonte di verità. Se una posizione non può essere ricostruita con entry, leverage, TP e SL, marcarla `UNATTRIBUTED` e bloccare nuove operazioni su quel simbolo fino alla risoluzione.
+- Implementare fine-run: stop-out configurabile, deadline, flattening e report.
+- Rendere i test completamente isolati, con DB e lock temporanei propri, senza dipendenza da servizio o file di produzione.
+
+Preset richiesto
+
+Crea un file/template, ad esempio `presets/run_preset.template.json`, che io possa compilare prima di ogni run:
+
+```json
+{
+  "run_name": "MIA_RUN",
+  "target_net_equity_eur": 500.00,
+  "duration_hours": 12,
+
+  "fee_mode": "zero_fee",
+  "spot_fee_rate": 0.0,
+  "futures_fee_rate": 0.0,
+  "slippage_rate": 0.001,
+  "funding_enabled": true,
+
+  "max_capital_allocation_pct": 100.0,
+  "max_total_notional_pct": 0,
+  "max_leverage": 0,
+
+  "allowed_markets": ["spot", "futures"],
+  "allowed_assets": "ALL_SUPPORTED",
+  "allow_long": true,
+  "allow_short": true,
+
+  "stop_out_drawdown_pct": 20.0,
+  "flatten_minutes_before_end": 15,
+
+  "strategy_notes_for_nemotron": "Scriverò qui eventuali preferenze strategiche. In assenza di istruzioni, Nemotron è autonomo.",
+  "paper_only": true
+}
+```
+
+Interpretazione:
+
+- Valore `0` per `max_total_notional_pct` e `max_leverage` significa “usa i limiti realmente disponibili nel paper broker e nella configurazione del sistema”.
+- Il mio obiettivo è netto: la run deve confrontare equity netta finale e target netto.
+- Nessuna assunzione va presa dal prompt precedente o da run passate: il preset e lo snapshot iniziale definiscono la run.
+
+Deliverable richiesti:
+
+1. Codice integrato e versionato nei repository NemoForge e Fondazione.
+2. Migrazione DB idempotente e backup automatico.
+3. Unit systemd aggiornata.
+4. Preset JSON compilabile e documentazione breve di avvio.
+5. Test locali isolati che coprano JSON, pair, fee mode, capital guard, posizione, scale-in/out, P&L netto, restart, TP/SL, stop-out, flattening e migrazione.
+6. Un test end-to-end controllato sul broker paper:
+   `snapshot → decisione → ordine → fill → ledger → chiusura → P&L netto → riconciliazione → account flat`.
+7. Report finale con commit esatti, test eseguiti, schema DB, output del test e stato finale paper flat.
+8. Solo dopo che tutto è verificato, riavvia `nemoloop.service` per una nuova run tramite preset.
+
+Non dichiarare la soluzione pronta finché il test end-to-end non dimostra la coerenza tra broker paper, ordine, posizione, trade chiuso e P&L netto nel database.

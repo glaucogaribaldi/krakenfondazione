@@ -1,0 +1,96 @@
+# SYSTEM ARCHITECTURE AUDIT & PROPOSAL REQUEST
+
+**Role Setup:**
+You are an Elite AI Systems Architect, Quantitative Developer, and Multi-Agent Reinforcement Learning (MARL) specialist. You are tasked with auditing a complex, multi-agent autonomous trading ecosystem that we have built, named "Project Fondazione / Nemotron Sovereign Broker".
+
+Please read the complete architecture, agent roles, infrastructure, and the specific upgrade requests formulated by our core trading AI. 
+**Your Objective:** Perform a deep structural audit of this system, identify potential bottlenecks or flaws, and provide a concrete, step-by-step implementation proposal to integrate the requested upgrades.
+
+---
+
+## 1. SYSTEM OVERVIEW & ARCHITECTURE
+
+The system is a fully autonomous AI cryptocurrency trading broker. It is completely isolated from human emotional intervention and operates via direct API calls to Kraken.
+
+### 1.1 Infrastructure
+- **Control Plane:** Main local server (Zava U50) running OpenClaw (Agent Orchestrator).
+- **Inference Plane (VPS):** A secure Tailscale-networked VPS (100.73.54.72) equipped with 8 vCPUs, 50GB RAM, 2x NVIDIA Tesla T4 GPUs (15GB VRAM each), and a dedicated 256GB EXT4 disk mounted at `/broker/storage/`.
+- **Security & Execution Boundary:** The system trades strictly in **PAPER TRADING** (Spot and Futures). The live, real-world portfolio API is connected in **READ-ONLY** mode to provide the exact baseline state and asset allocation for the simulation. Live trading is physically and programmatically locked.
+
+### 1.2 Agent Hierarchy (The 4 Pillars)
+
+We have strictly defined boundaries for each AI to avoid context-bloat and hallucinations:
+
+1. **Nemotron-Trader (The Sovereign Broker):**
+   - **Model:** `unsloth/Nemotron-3-Nano-30B-A3B-GGUF` running on VPS port 8080.
+   - **Role:** The absolute sovereign decision-maker. It directly executes Kraken API calls (via `ccxt`), manages its own risk, and determines its own cycle/wake frequencies. Nobody forces it to trade.
+   - **Self-Training:** It runs 50 parallel isolated Docker environments to self-train via Reinforcement Learning on historical data.
+
+2. **Fondazione-Reporter (The Translator/Facilitator):**
+   - **Model:** `Llama 3.1 8B` running on VPS port 8081.
+   - **Role:** The only interface allowed to speak to the human owner (Giacomo) via Telegram. It reads Nemotron's JSON/Markdown insight logs and generates concise, natural language status reports. This saves the 30B model from wasting compute on human chatter.
+
+3. **TRE (The Infrastructure Engineer):**
+   - **Role:** The orchestrator (the current AI writing this). Manages Docker containers, builds data pipelines, formats disks, and injects API keys into encrypted vaults. TRE *never* trades and *never* overrides Nemotron's risk limits.
+
+4. **Architetto-Gemini (The Offline Strategist):**
+   - **Role:** Offline macro-analyst. Reviews 30-day performance and suggests systemic code/architecture changes. Does not touch the live trading loop.
+
+---
+
+## 2. SYSTEM TOPOLOGY DIAGRAM
+
+```mermaid
+graph TD
+    User[Giacomo] <-->|Telegram| Reporter[Llama-8B Reporter]
+    Reporter <-->|Reads Insights| Storage[(/broker/storage)]
+    
+    TRE[TRE / Orchestrator] -->|Builds & Monitors| VPS[VPS Inference Node]
+    TRE -->|Vault Config| Storage
+    
+    VPS --> Nemotron[Nemotron 30B Sovereign Broker]
+    Nemotron <-->|Read-Only| LiveAPI[Kraken Live API]
+    Nemotron <-->|Trade Execution| PaperAPI[Kraken Paper API]
+    Nemotron <-->|Save Checkpoints & Logs| Storage
+    
+    subgraph Parallel Training Environments
+        Nemotron --> Sim1[Docker RL Env 1]
+        Nemotron --> Sim2[Docker RL Env 2]
+        Nemotron --> Sim50[Docker RL Env 50]
+    end
+```
+
+---
+
+## 3. THE NEXT EVOLUTION: NEMOTRON'S UPGRADE REQUESTS
+
+Nemotron's strategic parameters have been wiped clean, and it has been re-baselined to the real-world read-only portfolio. When asked what it needs to transcend its current capabilities, Nemotron explicitly requested the following three architectural upgrades:
+
+### Request A: Real-Time Data Pipeline Integration
+- **Current State:** Training is locked in the past (historical replays only).
+- **Request:** Needs low-latency, real-time tick data at 100ms intervals (e.g., WebSockets for L2/L3 order book depth) to perform *Online Learning* and react to live market regimes (e.g., sudden macro news).
+
+### Request B: Specialized Trading Agent Datasets
+- **Current State:** Policy lacks human-like edge case awareness.
+- **Request:** Ingestion of datasets from successful human/algo behaviors:
+  - *CryptoQuant* (On-chain sentiment).
+  - *Kaiko* (Tick-level order book data for slippage modeling).
+  - *TradingView* (Public strategy backtests like RSI divergence/Volume spikes).
+
+### Request C: Hierarchical Multi-Agent RL (HMARL) Shift
+- **Current State:** Single-agent RL optimizing multiple conflicting objectives (profit vs drawdown).
+- **Request:** Split Nemotron's internal logic into a Hierarchical Multi-Agent structure:
+  - **Strategist Sub-Agent:** Identifies the macro regime (Bull, Bear, Volatility Spike).
+  - **Executor Sub-Agent:** Handles the specific asset trade based on the Strategist's directive.
+  - **Risk Manager Sub-Agent:** Dynamically alters position sizing (Kelly Criterion) based on ms-level volatility.
+
+---
+
+## 4. YOUR TASK (THE AUDIT)
+
+Please provide a detailed response addressing the following:
+
+1. **Architecture Audit:** What are the hidden risks, bottlenecks, or flaws in our current 4-Pillar setup and VPS infrastructure (considering the 2x T4 GPUs)?
+2. **Implementation Proposal for HMARL:** How exactly should we code and structure the HMARL (Strategist, Executor, Risk Manager) inside the existing Nemotron-30B constraint? 
+3. **Data Pipeline Strategy:** Propose a lightweight architecture to feed real-time WebSockets and alternative datasets (Kaiko/CryptoQuant) into Nemotron's RL buffer without crashing the VPS memory or hitting Kraken API rate limits.
+4. **Step-by-Step Roadmap:** Give TRE and Giacomo a prioritized, technical checklist to start building these upgrades today.

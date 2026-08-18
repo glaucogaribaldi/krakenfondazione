@@ -1,11 +1,15 @@
-import sqlite3
-import os
 import sys
+import os
+import sqlite3
+import time
+import subprocess
+import json
 
 def init_db_v2(db_path="/broker/storage/storage-next/db/nemotron.sqlite"):
     """
-    Initializes the NemoForge V2.0 transational database schema in SQLite.
+    Initializes the NemoForge V2.0 transactional database schema in SQLite.
     Creates tables for:
+    - runs (metadata, including intent column containing frozen config JSON)
     - paper_orders (for every raw order sent)
     - paper_positions (exact transactional copy of active open positions, with scale-in average price, cumulative fees)
     - paper_trades_closed (for final closed trades with realized P&L, fee totals, MAE, MFE, durations)
@@ -17,6 +21,20 @@ def init_db_v2(db_path="/broker/storage/storage-next/db/nemotron.sqlite"):
     
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
+    
+    # 0. runs Table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS runs (
+            run_id TEXT PRIMARY KEY,
+            start_time INTEGER,
+            end_time INTEGER,
+            flattening_time INTEGER,
+            initial_equity_eur REAL,
+            target_equity_eur REAL,
+            intent JSON,
+            status TEXT
+        )
+    ''')
     
     # 1. paper_orders Table
     c.execute('''
@@ -33,11 +51,12 @@ def init_db_v2(db_path="/broker/storage/storage-next/db/nemotron.sqlite"):
         )
     ''')
     
-    # 2. paper_positions Table (One active row per symbol)
+    # 2. paper_positions Table (Using unique position_id as Primary Key to avoid collisions across multiple runs/trades)
     c.execute('''
         CREATE TABLE IF NOT EXISTS paper_positions (
-            symbol TEXT PRIMARY KEY,
+            position_id TEXT PRIMARY KEY,
             run_id TEXT,
+            symbol TEXT,
             side TEXT,
             size REAL,
             average_entry_price REAL,
@@ -50,6 +69,13 @@ def init_db_v2(db_path="/broker/storage/storage-next/db/nemotron.sqlite"):
             last_updated INTEGER,
             status TEXT
         )
+    ''')
+    
+    # Create partial unique index to ensure at most ONE active OPEN position exists per run/symbol
+    c.execute('''
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_active_pos 
+        ON paper_positions(run_id, symbol) 
+        WHERE status = 'OPEN'
     ''')
     
     # 3. paper_trades_closed Table

@@ -1,11 +1,11 @@
 import sys
 import os
-import json
 import sqlite3
 import time
 import subprocess
 import logging
 import uuid
+import json
 
 # Dynamically append parent directory to sys.path to enable proper imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -16,7 +16,6 @@ from nemoforge.db_init_v2 import init_db_v2
 # Configuration paths on VPS
 BASE_PATH = "/broker/storage/storage-next" if os.path.exists("/broker/storage/storage-next") else "./"
 DB_PATH = os.path.join(BASE_PATH, "db/nemotron.sqlite")
-POCKETS_PATH = os.path.join(BASE_PATH, "db/pockets.json")
 KRAKEN_PATH = "/home/tre/.local/bin/kraken"
 
 class TradingLoopV2:

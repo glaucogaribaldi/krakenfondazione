@@ -1,0 +1,146 @@
+Tre, audit aggiornato: il ledger V2 è migliorato in modo sostanziale, ma la run non è ancora pronta da avviare perché restano quattro blocchi concreti. Chiudili tutti prima di dichiarare la piattaforma ready-to-go.
+
+Prima di lavorare:
+
+- ferma `nemoloop.service`;
+- verifica che non restino loop paper attivi;
+- snapshot del DB e dello stato paper broker;
+- mantieni il paper account flat;
+- non toccare il conto Kraken reale: solo lettura snapshot.
+
+1. Correggere il runtime AI effettivo
+
+Il servizio attivo continua a loggare:
+
+```text
+Risk Mentor Error: name 'requests' is not defined
+Trader Error: name 'requests' is not defined
+```
+
+Nonostante il file sorgente contenga `import requests`.
+
+Individua la causa reale: versione caricata dal servizio, interpreter/venv, path Python, file `.pyc`, working directory o deploy incoerente. Non assumere che il source file sia quello eseguito.
+
+Aggiungi un preflight al servizio che, prima di entrare nel loop, verifichi e logghi:
+
+```text
+- sys.executable
+- __file__ del modulo loop
+- versione/hash del file sorgente
+- import requests riuscito
+- endpoint Nemotron raggiungibile
+- DB raggiungibile
+- lock acquisibile
+```
+
+Se una verifica fallisce, il servizio deve uscire senza generare ordini. Riavvia systemd solo dopo che questi controlli passano.
+
+2. Rendere i test realmente isolati
+
+La suite fallisce perché importare `run_24h_loop_v2.py` tenta di aprire il log di produzione:
+
+```text
+PermissionError: /broker/storage/storage-next/logs/24h_mission.log
+```
+
+Ristruttura il logging:
+
+- nessun `FileHandler` creato a import-time;
+- una funzione `configure_logging(log_path=None)` invocata solo dal main runtime;
+- test con logging in memoria o in file temporaneo;
+- dipendenze e path iniettati, non hardcoded;
+- DB temporaneo e lock temporaneo univoco per ogni test.
+
+Il comando seguente deve passare mentre `nemoloop.service` è attivo:
+
+```bash
+venv/bin/python3 nemoforge/acceptance_tests.py
+```
+
+3. Preset immutabile per run
+
+Il preset è oggi letto direttamente dal template. Questo non è accettabile: modificare il template non deve poter cambiare una run già attiva.
+
+Implementa un flusso di start:
+
+```text
+preset compilato
+→ validazione schema
+→ snapshot Kraken read-only
+→ copia immutabile del preset nel record della run
+→ reset/inizializzazione paper
+→ avvio systemd con run_id esplicito
+```
+
+Salva nel DB, dentro `runs.intent` oppure in una tabella `run_configs`, almeno:
+
+```json
+{
+  "run_id": "...",
+  "preset_version": "...",
+  "target_net_equity_eur": 500.0,
+  "duration_hours": 12,
+  "fee_mode": "zero_fee",
+  "spot_fee_rate": 0.0,
+  "futures_fee_rate": 0.0,
+  "slippage_rate": 0.001,
+  "funding_enabled": true,
+  "max_capital_allocation_pct": 100.0,
+  "max_total_notional_pct": 0,
+  "max_leverage": 0,
+  "allowed_markets": ["spot", "futures"],
+  "allowed_assets": "ALL_SUPPORTED",
+  "allow_long": true,
+  "allow_short": true,
+  "stop_out_drawdown_pct": 20.0,
+  "flatten_minutes_before_end": 15,
+  "strategy_notes_for_nemotron": "..."
+}
+```
+
+Il loop deve leggere esclusivamente la configurazione congelata della run attiva, non il template sul filesystem.
+
+4. Universo asset coerente con il preset
+
+Il prompt Trader enumera ancora solo BTC/USD, ETH/USD e SOL/USD. Correggilo:
+
+- se `allowed_assets = "ALL_SUPPORTED"`, recupera l’universo corrente dei perpetual e dei mercati spot supportati;
+- passa a Nemotron una lista valida e normalizzata, oppure istruiscilo a restituire una coppia e validala contro l’universo runtime;
+- non limitare implicitamente il modello a tre asset;
+- se il preset specifica una whitelist, rispettala;
+- ogni pair proposta deve passare da `normalize_pair()` e da verifica disponibilità broker prima di qualunque ordine.
+
+5. Fee regime e report netto
+
+La run deve usare il fee regime congelato:
+
+- `zero_fee`: fee = 0 in broker paper, sizing e ledger;
+- `kraken_standard`: fee configurate di default;
+- `custom`: valori dal preset.
+
+Slippage e funding restano separati e tracciati. Tutti i report devono esporre:
+
+```text
+gross P&L
+entry fee allocated
+exit fee
+funding
+slippage
+net P&L
+net P&L %
+```
+
+Il target run deve essere valutato su equity netta rispetto al regime economico scelto.
+
+Criteri di accettazione finali:
+
+1. Test isolati: 100% passanti con servizio attivo.
+2. Preflight systemd: import `requests`, percorso codice e endpoint Nemotron verificati.
+3. Nuova run avviata da un preset compilato e salvato immutabilmente nel DB.
+4. Il log mostra il `run_id`, hash/configurazione congelata, fee mode e asset universe.
+5. Test E2E paper controllato:
+   `snapshot → decisione JSON valida → ordine → fill → posizione con position_id → chiusura → P&L netto → riconciliazione → account flat`.
+6. Verifica che modificare il template dopo lo start non modifichi la run attiva.
+7. Pubblica commit esatti e documenta deploy, migrazione, test e rollback.
+
+Non dichiarare il sistema pronto finché questi sette criteri non sono dimostrati con output verificabile.

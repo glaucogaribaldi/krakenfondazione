@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "registry": "https://clawhub.ai",
+  "slug": "dynamic-ui",
+  "installedVersion": "1.2.0",
+  "installedAt": 1786474188132,
+  "artifact": {
+    "kind": "archive",
+    "sha256": "dd5a1ff9b36524f58114d9a4e7013e6545c9eeec7a7df6608f6b5d4f953e68e1",
+    "integrity": "sha256-3Vof+bNlJPWBFNmk5wE+ZUXJ7ux6ffZgj2tdT5U+aOE="
+  },
+  "skillFile": {
+    "path": "SKILL.md",
+    "sha256": "9298c75b77fb758b8e5c4d5b047c58c341c2906d90a97f4e60001947aac958c2"
+  }
+}

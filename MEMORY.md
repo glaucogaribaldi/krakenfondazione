@@ -18,9 +18,16 @@ Benvenuto nella memoria a lungo termine di TRE. Qui verranno conservate le decis
 
 ## 🖥️ Configurazione Gateway & Infrastruttura OpenClaw (Zava U50)
 - **Modifiche 2026-08-11:**
-  - **Memory Search:** Configurato per utilizzare gli embedding di **Gemini** (utilizzando il profilo attivo `google:default`) invece di OpenAI. Indice vettoriale ricostruito a 3072 dimensioni.
+  - **Memory Search:** Configurato per utilizzare gli embedding di **Gemini** (utilizzando il profilo attivo `google:default`) invece di OpenAI. Indice vettoriale ricostruito a 3072 dimensions.
   - **Gateway Bind:** Impostato su `auto` per permettere l'ascolto sia locale (loopback `127.0.0.1`) sia sulla rete Tailscale. Questo sblocca i tool integrati come `cron` e `memory_search`.
   - **Integrazione UI/Dashboard (ClawForge):** Installata la skill `theashbhat-dynamic-ui`. Risolto il rendering di grafici e tabelle via Headless Chromium superando il blocco sandbox di snap e i requisiti di autenticazione dell'iframe in chat.
+- **Risoluzione Instabilità & Crash Gateway (Fissato il 2026-08-18):**
+  - **Causa dei crash improvvisi:** Gli agenti autonomi (es. `tre-qwen`) a volte tentavano di disabilitare i propri tool modificando direttamente `openclaw.json` e impostando `"profile": "none"`. Tuttavia, `"none"` non è un valore ammesso dallo schema di validazione del Gateway (che ammette solo `"minimal"`, `"coding"`, `"messaging"`, `"full"`).
+  - **Perché il Gateway non si riavviava:** In `openclaw-gateway.service` di systemd era configurata la direttiva `RestartPreventExitStatus=78`. Quando la configurazione era invalida, OpenClaw usciva con codice `78` (CONFIG) e systemd smetteva deliberatamente di riavviare il servizio. Ciò obbligava Giacomo a eseguire manualmente `openclaw doctor --fix` per rimediare.
+  - **Soluzione permanente applicata:**
+    1. Aggiornato il file delle regole operative (`AGENTS.md`) vietando tassativamente la scrittura di `"none"` in `tools.profile`.
+    2. Stabilito il pattern corretto per disattivare i tool in sicurezza: impostare `"profile": "minimal"` e `"deny": ["session_status"]` (oppure `"allow": []`), che è compatibile al 100% con lo schema e rimuove ogni strumento.
+    3. Incrementato il timeout di avvio e arresto del servizio (`TimeoutStartSec` e `TimeoutStopSec` in systemd) per prevenire uccisioni premature (`SIGKILL`) durante i rallentamenti di rete.
 
 ---
 

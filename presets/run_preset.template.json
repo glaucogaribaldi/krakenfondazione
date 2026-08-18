@@ -1,0 +1,26 @@
+{
+ "run_name": "MIA_RUN",
+ "target_net_equity_eur": 500.00,
+ "duration_hours": 12,
+
+ "fee_mode": "zero_fee",
+ "spot_fee_rate": 0.0,
+ "futures_fee_rate": 0.0,
+ "slippage_rate": 0.001,
+ "funding_enabled": true,
+
+ "max_capital_allocation_pct": 100.0,
+ "max_total_notional_pct": 0,
+ "max_leverage": 0,
+
+ "allowed_markets": ["spot", "futures"],
+ "allowed_assets": "ALL_SUPPORTED",
+ "allow_long": true,
+ "allow_short": true,
+
+ "stop_out_drawdown_pct": 20.0,
+ "flatten_minutes_before_end": 15,
+
+ "strategy_notes_for_nemotron": "Scriverò qui eventuali preferenze strategiche. In assenza di istruzioni, Nemotron è autonomo.",
+ "paper_only": true
+}

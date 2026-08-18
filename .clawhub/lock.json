@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "skills": {
+    "dynamic-ui": {
+      "version": "1.2.0",
+      "installedAt": 1786474188132,
+      "registry": "https://clawhub.ai",
+      "artifact": {
+        "kind": "archive",
+        "sha256": "dd5a1ff9b36524f58114d9a4e7013e6545c9eeec7a7df6608f6b5d4f953e68e1",
+        "integrity": "sha256-3Vof+bNlJPWBFNmk5wE+ZUXJ7ux6ffZgj2tdT5U+aOE="
+      },
+      "skillFile": {
+        "path": "SKILL.md",
+        "sha256": "9298c75b77fb758b8e5c4d5b047c58c341c2906d90a97f4e60001947aac958c2"
+      },
+      "verification": {
+        "schema": "clawhub.skill.verify.v1",
+        "ok": true,
+        "decision": "pass",
+        "reasons": [],
+        "card": {
+          "available": true,
+          "path": "skill-card.md",
+          "url": "https://wry-manatee-359.convex.site/api/v1/skills/dynamic-ui/card?ownerHandle=theashbhat&version=1.2.0",
+          "sha256": "49190ce8b962fa62dac903ae6609ec12847bd7b76fa59b3f93f4aac3b597f91d",
+          "size": 1954,
+          "contentType": "text/markdown; charset=utf-8"
+        },
+        "artifact": {
+          "sourceFingerprint": "ea5248cded7c3a1627079f6c5e0fb3bfe8b5fe03e4360e29177baed10b962bcf",
+          "bundleFingerprints": [
+            "3d7c1121571cad1a00fa25f395e9bb5d18b7a9c8cd9dbd0a8b5658f5b0c49a7e"
+          ],
+          "files": [
+            {
+              "path": "README.md",
+              "size": 2954,
+              "sha256": "c241058a131ab9cd55f868c6fb8c722c09b1d529f8707e1d68218f48b4ca7d8b",
+              "contentType": "text/markdown"
+            },
+            {
+              "path": "SKILL.md",
+              "size": 3987,
+              "sha256": "9298c75b77fb758b8e5c4d5b047c58c341c2906d90a97f4e60001947aac958c2",
+              "contentType": "text/markdown"
+            },
+            {
+              "path": "_meta.json",
+              "size": 129,
+              "sha256": "629238883a0136b0b156e87a8a898e67aa4b6676a87a09094ec4286af93223d0",
+              "contentType": "application/json"
+            },
+            {
+              "path": "examples/card.json",
+              "size": 255,
+              "sha256": "a0f612b642160a3df80e3fb715070f4ba83d5258f4e3b39abc482032f7e4f4a4",
+              "contentType": "application/json"
+            },
+            {
+              "path": "examples/chart-bar.json",
+              "size": 144,
+              "sha256": "14b248cc47ff032a4f135480e8c96560c0862d70a09c5727950a4c6d9b031b61",
+              "contentType": "application/json"
+            },
+            {
+              "path": "examples/dashboard.json",
+              "size": 534,
+              "sha256": "2bc7b1f75aa9dcdef18b3a7c40e4ef9ae9c7a9bd6be8d1934abd4319d0fb366f",
+              "contentType": "application/json"
+            },
+            {
+              "path": "examples/stats.json",
+              "size": 291,
+              "sha256": "ed8ad7e1fcf44dfaa8053c26af3933e7cae650a9b94842b14d178fc05bb646eb",
+              "contentType": "application/json"
+            },
+            {
+              "path": "examples/table.json",
+              "size": 279,
+              "sha256": "531cc4a90ddeed52a2632f39b36b12957ed1c26db71f7598288ee44a94aba7e5",
+              "contentType": "application/json"
+            },
+            {
+              "path": "scripts/render.sh",
+              "size": 14221,
+              "sha256": "3295f674f5bdf03b61095ee7f2aff124015e95f7865da628d30287b960ac0e1d",
+              "contentType": "application/x-sh"
+            },
+            {
+              "path": "templates/card.html",
+              "size": 2629,
+              "sha256": "d68622f6ebfcf363508cdf351d52151ba3bad6fafb183be037a8a28e29949650",
+              "contentType": "text/html"
+            },
+            {
+              "path": "templates/chart-bar.html",
+              "size": 2418,
+              "sha256": "e733e32e6a94694c6f4af8667990449e5b6fba0f85c1db1a85c45e91ca034617",
+              "contentType": "text/html"
+            },
+            {
+              "path": "templates/dashboard.html",
+              "size": 2948,
+              "sha256": "d3229c25f8fd52c59fce64ecc29f0432147f6536e1cd46a8f444d676276a62b1",
+              "contentType": "text/html"
+            },
+            {
+              "path": "templates/stats.html",
+              "size": 2391,
+              "sha256": "7d37839970761ebc43d836b18125cfa1aad16cdcc7042aa0aa49427bbbfc59f1",
+              "contentType": "text/html"
+            },
+            {
+              "path": "templates/table.html",
+              "size": 2508,
+              "sha256": "1551859e28e953e5f45699f11804f88a8f5fdee7d436eb5dd0e131fa3b63bd3c",
+              "contentType": "text/html"
+            },
+            {
+              "path": "themes/dark.css",
+              "size": 1391,
+              "sha256": "311ad171ffc3e7b8c675d1ef655c7005454f795014788b10f11bcbf25acf298a",
+              "contentType": "text/css"
+            },
+            {
+              "path": "themes/minimal.css",
+              "size": 878,
+              "sha256": "80da4319d93250b1703342720930a585b9757942be2c18e9e9061fc008a65748",
+              "contentType": "text/css"
+            },
+            {
+              "path": "themes/modern.css",
+              "size": 1411,
+              "sha256": "ce3072f5f92ada7fb604a443dd0698e4836f572db2474373312ed27d57f53764",
+              "contentType": "text/css"
+            }
+          ]
+        },
+        "provenance": {
+          "source": "unavailable",
+          "reason": "No server-resolved GitHub import provenance is stored for this version."
+        },
+        "security": {
+          "status": "clean",
+          "passed": true,
+          "rawStatus": "clean",
+          "verdict": "benign",
+          "confidence": "high",
+          "summary": "This skill coherently renders user-provided data into images, with a few hardening gaps but no evidence of hidden, deceptive, or unrelated behavior.",
+          "model": "gpt-5.5",
+          "checkedAt": 1779950273560,
+          "signals": {
+            "staticScan": {
+              "status": "clean",
+              "rawStatus": "clean",
+              "reasonCodes": [],
+              "summary": "No suspicious patterns detected.",
+              "engineVersion": "v2.4.5",
+              "checkedAt": 1777525334386
+            },
+            "virusTotal": {
+              "status": "clean",
+              "rawStatus": "clean",
+              "verdict": "benign",
+              "analysis": "Type: OpenClaw Skill\nName: dynamic-ui\nVersion: 1.2.0\n\nThe skill bundle is classified as benign. The `scripts/render.sh` script demonstrates strong security practices, including comprehensive HTML entity escaping for all user-supplied data via the `escape_html` function, and robust validation of image URLs to prevent dangerous protocols like `file:` or `javascript:` from being loaded by `wkhtmltoimage`. All shell commands are properly quoted, preventing shell injection. The `SKILL.md` instructions are clear, align with the stated purpose, and contain no evidence of prompt injection attempts or malicious directives for the AI agent.",
+              "source": "palm",
+              "scanner": "code_insight",
+              "engineStats": {
+                "harmless": 0,
+                "malicious": 0,
+                "suspicious": 0,
+                "undetected": 64
+              },
+              "checkedAt": 1779166329852
+            },
+            "skillSpector": {
+              "status": "suspicious",
+              "rawStatus": "suspicious",
+              "score": 26,
+              "severity": "MEDIUM",
+              "recommendation": "CAUTION",
+              "issueCount": 2,
+              "scannerVersion": "2.0.0",
+              "summary": null,
+              "error": null,
+              "checkedAt": 1779950238094
+            },
+            "dependencyRegistry": null
+          }
+        },
+        "signature": {
+          "status": "unsigned"
+        }
+      }
+    }
+  }
+}
